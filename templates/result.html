@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>분석 결과 - {{ analysis.filename }}</title>
+    <style>
+        :root {
+            --bg: #0f172a; --bg2: #1e293b; --bg3: #334155;
+            --text: #e2e8f0; --text2: #94a3b8; --text3: #64748b;
+            --blue: #3b82f6; --purple: #8b5cf6; --green: #10b981;
+            --red: #ef4444; --orange: #f59e0b; --cyan: #06b6d4;
+            --border: rgba(148,163,184,0.1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg); color: var(--text);
+            line-height: 1.6;
+        }
+        .topbar {
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky; top: 0; z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .topbar h1 {
+            font-size: 1.2rem;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .topbar-actions { display: flex; gap: 0.75rem; align-items: center; }
+        .btn {
+            padding: 0.5rem 1.25rem; border: none; border-radius: 0.5rem;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; text-decoration: none; display: inline-flex;
+            align-items: center; gap: 0.4rem;
+        }
+        .btn-outline {
+            background: transparent; color: var(--text2);
+            border: 1px solid rgba(148,163,184,0.2);
+        }
+        .btn-outline:hover { background: rgba(148,163,184,0.1); color: var(--text); }
+        .btn-download {
+            background: linear-gradient(135deg, var(--green), #059669);
+            color: white;
+        }
+        .btn-download:hover { transform: translateY(-1px); box-shadow: 0 5px 15px rgba(16,185,129,0.3); }
+
+        .main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 0.75rem; padding: 1.25rem;
+        }
+        .stat-card .label { font-size: 0.75rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-card .value { font-size: 1.8rem; font-weight: 700; margin-top: 0.25rem; }
+        .stat-card .sub { font-size: 0.8rem; color: var(--text2); margin-top: 0.25rem; }
+        .stat-card.critical .value { color: var(--red); }
+        .stat-card.high .value { color: var(--orange); }
+        .stat-card.info .value { color: var(--blue); }
+
+        .section {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 0.75rem; margin-bottom: 1.5rem; overflow: hidden;
+        }
+        .section-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; user-select: none;
+        }
+        .section-header h2 { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+        .section-header .toggle { color: var(--text3); font-size: 0.8rem; }
+        .section-body { padding: 1.5rem; }
+        .section-body.collapsed { display: none; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .chart-container { position: relative; }
+        .chart-box { padding: 0.5rem 0; }
+        .chart-bar-row {
+            display: flex; align-items: center; gap: 0.75rem;
+            margin-bottom: 0.5rem; font-size: 0.82rem;
+        }
+        .chart-bar-label {
+            min-width: 150px; text-align: right; color: var(--text2);
+            font-size: 0.8rem; white-space: nowrap;
+        }
+        .chart-bar-track {
+            flex: 1; height: 28px; background: rgba(148,163,184,0.08);
+            border-radius: 4px; overflow: hidden;
+        }
+        .chart-bar-fill {
+            height: 100%; border-radius: 4px;
+            display: flex; align-items: center; padding-left: 8px;
+            font-size: 0.75rem; color: white; font-weight: 600;
+            transition: width 0.6s ease;
+            min-width: 28px;
+        }
+        .chart-bar-fill.eid-1 { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .chart-bar-fill.eid-3 { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+        .chart-bar-fill.eid-5 { background: linear-gradient(90deg, #64748b, #94a3b8); }
+        .chart-bar-fill.eid-6 { background: linear-gradient(90deg, #10b981, #34d399); }
+        .chart-bar-fill.sev-critical { background: linear-gradient(90deg, #dc2626, #f87171); }
+        .chart-bar-fill.sev-high { background: linear-gradient(90deg, #ea580c, #fb923c); }
+        .chart-bar-fill.sev-medium { background: linear-gradient(90deg, #d97706, #fbbf24); }
+        .chart-bar-fill.sev-low { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+        .chart-bar-fill.ip { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+
+        .donut-container { display: flex; align-items: center; gap: 2rem; justify-content: center; flex-wrap: wrap; }
+        .donut-wrapper { position: relative; width: 180px; height: 180px; }
+        .donut-wrapper svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .donut-center {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        .donut-center .num { font-size: 1.8rem; font-weight: 700; }
+        .donut-center .lbl { font-size: 0.7rem; color: var(--text3); }
+        .legend-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; color: var(--text2); }
+        .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+        .legend-val { margin-left: auto; font-weight: 600; color: var(--text); padding-left: 1rem; }
+
+        .time-heatmap { display: flex; gap: 2px; align-items: flex-end; height: 180px; padding: 0.5rem 0; }
+        .time-col {
+            flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+            align-items: center; gap: 1px; min-width: 0;
+        }
+        .time-col .bar-seg {
+            width: 100%; border-radius: 2px 2px 0 0; min-height: 0;
+            transition: height 0.4s ease;
+        }
+        .time-col .bar-seg.eid-1 { background: #ef4444; }
+        .time-col .bar-seg.eid-3 { background: #06b6d4; }
+        .time-col .bar-seg.eid-5 { background: #64748b; }
+        .time-col .bar-seg.eid-6 { background: #10b981; }
+        .time-col .col-label {
+            font-size: 0.55rem; color: var(--text3); writing-mode: vertical-rl;
+            text-orientation: mixed; margin-top: 4px; max-height: 50px;
+            overflow: hidden;
+        }
+        .time-col:hover .bar-seg { opacity: 0.8; }
+        .time-col-tip {
+            display: none; position: absolute; background: var(--bg3);
+            padding: 0.4rem 0.6rem; border-radius: 0.3rem; font-size: 0.72rem;
+            color: var(--text); pointer-events: none; z-index: 10; white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        /* Threat cards */
+        .threat-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .threat-card {
+            border-radius: 0.5rem;
+            padding: 1rem 1.25rem;
+            border-left: 4px solid;
+            background: rgba(15, 23, 42, 0.5);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .threat-card:hover { background: rgba(15, 23, 42, 0.8); }
+        .threat-card.critical { border-color: #dc2626; }
+        .threat-card.high { border-color: #ea580c; }
+        .threat-card.medium { border-color: #d97706; }
+        .threat-card.low { border-color: #2563eb; }
+        .threat-card.info { border-color: #6b7280; }
+
+        .threat-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.4rem; }
+        .severity-badge {
+            font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+            padding: 0.15rem 0.5rem; border-radius: 0.25rem; color: white;
+            letter-spacing: 0.05em;
+        }
+        .severity-badge.critical { background: #dc2626; }
+        .severity-badge.high { background: #ea580c; }
+        .severity-badge.medium { background: #d97706; }
+        .severity-badge.low { background: #2563eb; }
+
+        .threat-title { font-weight: 600; font-size: 0.95rem; }
+        .threat-desc { font-size: 0.85rem; color: var(--text2); margin-bottom: 0.5rem; }
+        .threat-meta { font-size: 0.75rem; color: var(--text3); display: flex; gap: 1rem; flex-wrap: wrap; }
+        .threat-detail {
+            margin-top: 0.75rem; padding: 0.75rem;
+            background: rgba(0,0,0,0.3); border-radius: 0.4rem;
+            font-family: 'Consolas', monospace; font-size: 0.8rem;
+            white-space: pre-wrap; color: var(--text2);
+            display: none;
+        }
+        .threat-card.expanded .threat-detail { display: block; }
+
+        /* Timeline */
+        .timeline-container {
+            position: relative;
+            overflow-x: auto;
+            padding: 1rem 0;
+        }
+        .timeline-track {
+            position: relative;
+            min-height: 500px;
+            padding-left: 180px;
+        }
+        .timeline-line {
+            position: absolute;
+            left: 170px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--blue), var(--purple), var(--cyan));
+        }
+        .timeline-event {
+            position: relative;
+            padding: 0.6rem 0 0.6rem 2rem;
+            min-height: 40px;
+            display: flex;
+            align-items: flex-start;
+        }
+        .timeline-time {
+            position: absolute;
+            left: -170px;
+            width: 160px;
+            text-align: right;
+            font-size: 0.72rem;
+            color: var(--text3);
+            font-family: 'Consolas', monospace;
+            padding-top: 0.2rem;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: -5px;
+            top: 0.75rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid var(--bg);
+            z-index: 1;
+        }
+        .timeline-dot.eid-1 { background: var(--red); }
+        .timeline-dot.eid-3 { background: var(--cyan); }
+        .timeline-dot.eid-5 { background: var(--text3); }
+        .timeline-dot.eid-6 { background: var(--green); }
+        .timeline-content {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 0.4rem;
+            padding: 0.5rem 0.75rem;
+            flex: 1;
+            font-size: 0.82rem;
+        }
+        .timeline-content .eid-tag {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.1rem 0.4rem;
+            border-radius: 0.2rem;
+            margin-right: 0.5rem;
+            display: inline-block;
+        }
+        .eid-tag.eid-1 { background: rgba(239,68,68,0.2); color: #fca5a5; }
+        .eid-tag.eid-3 { background: rgba(6,182,212,0.2); color: #67e8f9; }
+        .eid-tag.eid-5 { background: rgba(100,116,139,0.2); color: #94a3b8; }
+        .eid-tag.eid-6 { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+
+        /* Tables */
+        .data-table {
+            width: 100%; border-collapse: collapse; font-size: 0.82rem;
+        }
+        .data-table th {
+            text-align: left; padding: 0.6rem 0.75rem;
+            background: rgba(15,23,42,0.5); color: var(--text2);
+            font-weight: 600; font-size: 0.75rem;
+            text-transform: uppercase; letter-spacing: 0.03em;
+            border-bottom: 1px solid var(--border);
+        }
+        .data-table td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid rgba(148,163,184,0.05);
+            color: var(--text2);
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .data-table tr:hover td { background: rgba(59,130,246,0.03); }
+
+        .tag {
+            display: inline-block; padding: 0.1rem 0.4rem;
+            border-radius: 0.2rem; font-size: 0.72rem; font-weight: 600;
+        }
+        .tag-high { background: rgba(239,68,68,0.15); color: #fca5a5; }
+        .tag-system { background: rgba(139,92,246,0.15); color: #c4b5fd; }
+
+        .filter-bar {
+            display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;
+        }
+        .filter-btn {
+            padding: 0.3rem 0.75rem; border-radius: 0.35rem;
+            border: 1px solid var(--border); background: transparent;
+            color: var(--text2); font-size: 0.78rem; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .filter-btn:hover, .filter-btn.active {
+            background: rgba(59,130,246,0.1); border-color: var(--blue); color: var(--blue);
+        }
+
+        .empty-state { text-align: center; padding: 2rem; color: var(--text3); }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <h1>🛡️ Sysmon EVTX Analyzer</h1>
+        <div class="topbar-actions">
+            <a href="/" class="btn btn-outline">← 새 분석</a>
+            <a href="/download_report/{{ cache_key }}" class="btn btn-download">📥 HTML 보고서 다운로드</a>
+        </div>
+    </div>
+
+    <div class="main" id="reportContent">
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <div class="stat-card info">
+                <div class="label">총 이벤트</div>
+                <div class="value">{{ analysis.total_events }}</div>
+                <div class="sub">{{ analysis.filename }}</div>
+            </div>
+            <div class="stat-card {% if analysis.threat_summary.critical > 0 %}critical{% elif analysis.threat_summary.high > 0 %}high{% else %}info{% endif %}">
+                <div class="label">탐지된 위협</div>
+                <div class="value">{{ analysis.threats|length }}</div>
+                <div class="sub">
+                    {% if analysis.threat_summary.critical > 0 %}Critical: {{ analysis.threat_summary.critical }}{% endif %}
+                    {% if analysis.threat_summary.high > 0 %} High: {{ analysis.threat_summary.high }}{% endif %}
+                </div>
+            </div>
+            <div class="stat-card info">
+                <div class="label">분석 기간</div>
+                <div class="value" style="font-size:1rem;">{{ analysis.time_range.start[:19] }}</div>
+                <div class="sub">~ {{ analysis.time_range.end[:19] }}</div>
+            </div>
+            <div class="stat-card info">
+                <div class="label">대상 호스트</div>
+                <div class="value" style="font-size:1.3rem;">{{ analysis.computers|join(', ') }}</div>
+                <div class="sub">사용자: {{ analysis.users|join(', ') }}</div>
+            </div>
+        </div>
+
+        <!-- Threat Detection -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>🚨 보안 위협 탐지 결과 ({{ analysis.threats|length }}건)</h2>
+                <span class="toggle">접기/펼치기</span>
+            </div>
+            <div class="section-body">
+                {% if analysis.threats %}
+                <div class="filter-bar">
+                    <button class="filter-btn active" onclick="filterThreats('all', this)">전체 ({{ analysis.threats|length }})</button>
+                    {% if analysis.threat_summary.critical > 0 %}
+                    <button class="filter-btn" onclick="filterThreats('critical', this)">🔴 Critical ({{ analysis.threat_summary.critical }})</button>
+                    {% endif %}
+                    {% if analysis.threat_summary.high > 0 %}
+                    <button class="filter-btn" onclick="filterThreats('high', this)">🟠 High ({{ analysis.threat_summary.high }})</button>
+                    {% endif %}
+                    {% if analysis.threat_summary.medium > 0 %}
+                    <button class="filter-btn" onclick="filterThreats('medium', this)">🟡 Medium ({{ analysis.threat_summary.medium }})</button>
+                    {% endif %}
+                </div>
+                <div class="threat-list" id="threatList">
+                    {% for threat in analysis.threats %}
+                    <div class="threat-card {{ threat.severity }}" data-severity="{{ threat.severity }}" onclick="this.classList.toggle('expanded')">
+                        <div class="threat-header">
+                            <span class="severity-badge {{ threat.severity }}">{{ threat.severity }}</span>
+                            <span class="threat-title">{{ threat.title }}</span>
+                        </div>
+                        <div class="threat-desc">{{ threat.description }}</div>
+                        <div class="threat-meta">
+                            <span>⏰ {{ threat.timestamp[:19] }}</span>
+                            <span>🎯 {{ threat.mitre }}</span>
+                        </div>
+                        <div class="threat-detail">{{ threat.detail }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">위협이 탐지되지 않았습니다.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid-2">
+            <div class="section">
+                <div class="section-header">
+                    <h2>📊 이벤트 유형 분포</h2>
+                </div>
+                <div class="section-body">
+                    {% set eid_names = {1: 'Process Create', 3: 'Network Connection', 5: 'Process Terminated', 6: 'Driver Loaded'} %}
+                    {% set eid_colors = {1: '#ef4444', 3: '#06b6d4', 5: '#64748b', 6: '#10b981'} %}
+                    {% set total_events = analysis.total_events %}
+                    <div class="donut-container">
+                        <div class="donut-wrapper">
+                            <svg viewBox="0 0 100 100">
+                                {% set ns = namespace(offset=0) %}
+                                {% for eid, count in analysis.eid_distribution.items()|sort %}
+                                {% set pct = (count / total_events * 100) %}
+                                {% set gap = 2 %}
+                                <circle cx="50" cy="50" r="40"
+                                    fill="none"
+                                    stroke="{{ eid_colors.get(eid|int, '#8b5cf6') }}"
+                                    stroke-width="12"
+                                    stroke-dasharray="{{ (pct - gap) * 2.512 }} {{ (100 - pct + gap) * 2.512 }}"
+                                    stroke-dashoffset="{{ -ns.offset * 2.512 }}"
+                                    style="transition: stroke-dasharray 0.6s ease"
+                                />
+                                {% set ns.offset = ns.offset + pct %}
+                                {% endfor %}
+                            </svg>
+                            <div class="donut-center">
+                                <div class="num">{{ total_events }}</div>
+                                <div class="lbl">EVENTS</div>
+                            </div>
+                        </div>
+                        <div class="legend-list">
+                            {% for eid, count in analysis.eid_distribution.items()|sort %}
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:{{ eid_colors.get(eid|int, '#8b5cf6') }}"></div>
+                                <span>{{ eid_names.get(eid|int, 'Event ' ~ eid) }}</span>
+                                <span class="legend-val">{{ count }} <span style="color:var(--text3);font-weight:400">({{ (count / total_events * 100)|round(1) }}%)</span></span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="section">
+                <div class="section-header">
+                    <h2>📈 시간별 이벤트 추이</h2>
+                </div>
+                <div class="section-body">
+                    <div class="chart-container" style="position:relative;">
+                        {% set time_groups = {} %}
+                        {% for item in analysis.timeline %}
+                            {% set minute = item.timestamp[:16] %}
+                            {% if minute not in time_groups %}
+                                {% set _ = time_groups.update({minute: {}}) %}
+                            {% endif %}
+                            {% set eid_str = item.event_id|string %}
+                            {% if eid_str not in time_groups[minute] %}
+                                {% set _ = time_groups[minute].update({eid_str: 0}) %}
+                            {% endif %}
+                            {% set _ = time_groups[minute].update({eid_str: time_groups[minute][eid_str] + 1}) %}
+                        {% endfor %}
+                        {% set all_totals = [] %}
+                        {% for min_key in time_groups|sort %}
+                            {% set total = time_groups[min_key].values()|sum %}
+                            {% set _ = all_totals.append(total) %}
+                        {% endfor %}
+                        {% set max_total = all_totals|max if all_totals else 1 %}
+                        <div class="time-heatmap">
+                            {% for min_key in time_groups|sort %}
+                            {% set grp = time_groups[min_key] %}
+                            {% set total = grp.values()|sum %}
+                            <div class="time-col" title="{{ min_key[11:] }} ({{ total }}건)">
+                                {% for eid in ['6','5','3','1'] %}
+                                {% if eid in grp and grp[eid] > 0 %}
+                                <div class="bar-seg eid-{{ eid }}" style="height:{{ (grp[eid] / max_total * 140)|round }}px"></div>
+                                {% endif %}
+                                {% endfor %}
+                                <div class="col-label">{{ min_key[11:16] }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div style="display:flex;gap:1rem;justify-content:center;margin-top:0.75rem;font-size:0.72rem;color:var(--text3)">
+                            <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#ef4444;margin-right:4px"></span>Process Create</span>
+                            <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#06b6d4;margin-right:4px"></span>Network</span>
+                            <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#64748b;margin-right:4px"></span>Terminated</span>
+                            <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#10b981;margin-right:4px"></span>Driver</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>🕐 이벤트 타임라인</h2>
+                <span class="toggle">접기/펼치기</span>
+            </div>
+            <div class="section-body">
+                <div class="filter-bar">
+                    <button class="filter-btn active" onclick="filterTimeline('all', this)">전체</button>
+                    <button class="filter-btn" onclick="filterTimeline('1', this)">🔴 Process Create</button>
+                    <button class="filter-btn" onclick="filterTimeline('3', this)">🔵 Network</button>
+                    <button class="filter-btn" onclick="filterTimeline('5', this)">⚫ Terminated</button>
+                    <button class="filter-btn" onclick="filterTimeline('6', this)">🟢 Driver</button>
+                </div>
+                <div class="timeline-container">
+                    <div class="timeline-track">
+                        <div class="timeline-line"></div>
+                        {% for item in analysis.timeline %}
+                        <div class="timeline-event" data-eid="{{ item.event_id }}">
+                            <div class="timeline-time">{{ item.timestamp[11:19] if item.timestamp|length > 19 else item.timestamp }}</div>
+                            <div class="timeline-dot eid-{{ item.event_id }}"></div>
+                            <div class="timeline-content">
+                                <span class="eid-tag eid-{{ item.event_id }}">{{ item.event_name }}</span>
+                                {{ item.label }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Process Creation -->
+        {% if analysis.process_tree %}
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>⚙️ 프로세스 생성 이벤트 ({{ analysis.process_tree|length }}건)</h2>
+                <span class="toggle">접기/펼치기</span>
+            </div>
+            <div class="section-body">
+                <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>시각</th>
+                            <th>프로세스</th>
+                            <th>명령어</th>
+                            <th>부모 프로세스</th>
+                            <th>사용자</th>
+                            <th>권한</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in analysis.process_tree %}
+                        <tr>
+                            <td style="white-space:nowrap;font-family:Consolas,monospace;font-size:0.75rem;">{{ p.timestamp[:19] }}</td>
+                            <td title="{{ p.image }}">{{ p.image.split('\\')[-1] }}</td>
+                            <td title="{{ p.cmd }}">{{ p.cmd[:80] }}{% if p.cmd|length > 80 %}...{% endif %}</td>
+                            <td title="{{ p.parent_image }}">{{ p.parent_image.split('\\')[-1] }}</td>
+                            <td>{{ p.user }}</td>
+                            <td>
+                                {% if p.integrity == 'High' or p.integrity == 'System' %}
+                                <span class="tag tag-high">{{ p.integrity }}</span>
+                                {% else %}
+                                {{ p.integrity }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Network Connections -->
+        {% if analysis.network_summary %}
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>🌐 네트워크 연결 이벤트 ({{ analysis.network_summary|length }}건)</h2>
+                <span class="toggle">접기/펼치기</span>
+            </div>
+            <div class="section-body">
+                <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>시각</th>
+                            <th>프로세스</th>
+                            <th>출발지</th>
+                            <th>목적지</th>
+                            <th>프로토콜</th>
+                            <th>Initiated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for n in analysis.network_summary %}
+                        <tr>
+                            <td style="white-space:nowrap;font-family:Consolas,monospace;font-size:0.75rem;">{{ n.timestamp[:19] }}</td>
+                            <td title="{{ n.process }}">{{ n.process.split('\\')[-1] }}</td>
+                            <td>{{ n.src_ip }}:{{ n.src_port }}</td>
+                            <td>{{ n.dst_ip }}:{{ n.dst_port }}</td>
+                            <td>{{ n.protocol }}</td>
+                            <td>{{ n.initiated }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- IP Statistics & Severity -->
+        <div class="grid-2">
+            {% if analysis.ip_counter %}
+            <div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <h2>🌍 IP 통신 통계</h2>
+                    <span class="toggle">접기/펼치기</span>
+                </div>
+                <div class="section-body">
+                    {% set max_ip = analysis.ip_counter.values()|max %}
+                    <div class="chart-box">
+                        {% for ip, count in analysis.ip_counter.items() %}
+                        <div class="chart-bar-row">
+                            <div class="chart-bar-label" style="font-family:Consolas,monospace;font-size:0.78rem;">{{ ip }}</div>
+                            <div class="chart-bar-track">
+                                <div class="chart-bar-fill ip" style="width: {{ (count / max_ip * 100)|round }}%">{{ count }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            <div class="section">
+                <div class="section-header">
+                    <h2>📋 위협 심각도 분포</h2>
+                </div>
+                <div class="section-body">
+                    {% set sev_names = {'critical': 'Critical', 'high': 'High', 'medium': 'Medium', 'low': 'Low', 'info': 'Info'} %}
+                    {% set sev_colors = {'critical': '#dc2626', 'high': '#ea580c', 'medium': '#d97706', 'low': '#2563eb', 'info': '#6b7280'} %}
+                    {% set total_threats = analysis.threats|length %}
+                    <div class="donut-container">
+                        <div class="donut-wrapper">
+                            <svg viewBox="0 0 100 100">
+                                {% set ns2 = namespace(offset=0) %}
+                                {% for sev, count in analysis.threat_summary.items() %}
+                                {% if count > 0 %}
+                                {% set pct = (count / total_threats * 100) if total_threats > 0 else 0 %}
+                                {% set gap = 2 %}
+                                <circle cx="50" cy="50" r="40"
+                                    fill="none"
+                                    stroke="{{ sev_colors[sev] }}"
+                                    stroke-width="12"
+                                    stroke-dasharray="{{ (pct - gap) * 2.512 }} {{ (100 - pct + gap) * 2.512 }}"
+                                    stroke-dashoffset="{{ -ns2.offset * 2.512 }}"
+                                    style="transition: stroke-dasharray 0.6s ease"
+                                />
+                                {% set ns2.offset = ns2.offset + pct %}
+                                {% endif %}
+                                {% endfor %}
+                            </svg>
+                            <div class="donut-center">
+                                <div class="num">{{ total_threats }}</div>
+                                <div class="lbl">THREATS</div>
+                            </div>
+                        </div>
+                        <div class="legend-list">
+                            {% for sev, count in analysis.threat_summary.items() %}
+                            {% if count > 0 %}
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:{{ sev_colors[sev] }}"></div>
+                                <span>{{ sev_names[sev] }}</span>
+                                <span class="legend-val">{{ count }} <span style="color:var(--text3);font-weight:400">({{ (count / total_threats * 100)|round(1) }}%)</span></span>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Section toggle
+        function toggleSection(header) {
+            const body = header.nextElementSibling;
+            body.classList.toggle('collapsed');
+        }
+
+        // Threat filter
+        function filterThreats(severity, btn) {
+            document.querySelectorAll('.filter-bar .filter-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            document.querySelectorAll('.threat-card').forEach(card => {
+                card.style.display = (severity === 'all' || card.dataset.severity === severity) ? '' : 'none';
+            });
+        }
+
+        // Timeline filter
+        function filterTimeline(eid, btn) {
+            const bar = btn.parentElement;
+            bar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('.timeline-event').forEach(el => {
+                el.style.display = (eid === 'all' || el.dataset.eid === eid) ? '' : 'none';
+            });
+        }
+
+    </script>
+</body>
+</html>

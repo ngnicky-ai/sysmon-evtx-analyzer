@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sysmon EVTX Analysis Report - {{ analysis.filename }}</title>
+    <style>
+        :root {
+            --bg: #0f172a; --bg2: #1e293b; --bg3: #334155;
+            --text: #e2e8f0; --text2: #94a3b8; --text3: #64748b;
+            --blue: #3b82f6; --purple: #8b5cf6; --green: #10b981;
+            --red: #ef4444; --orange: #f59e0b; --cyan: #06b6d4;
+            --border: rgba(148,163,184,0.1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @media print {
+            body { background: white !important; color: #1e293b !important; }
+            .stat-card, .section { border: 1px solid #cbd5e1 !important; background: #f8fafc !important; }
+            .threat-card { background: #f1f5f9 !important; }
+            .report-header { background: #f8fafc !important; }
+            :root { --text: #1e293b; --text2: #475569; --text3: #64748b; }
+        }
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg); color: var(--text);
+            line-height: 1.6; padding: 2rem;
+            max-width: 1200px; margin: 0 auto;
+        }
+        .report-header {
+            text-align: center; margin-bottom: 2rem; padding: 2rem;
+            background: var(--bg2); border-radius: 1rem;
+            border: 1px solid var(--border);
+        }
+        .report-header h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        .report-header p { color: var(--text2); font-size: 0.9rem; }
+
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem; margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 0.75rem; padding: 1.25rem;
+        }
+        .stat-card .label { font-size: 0.75rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-card .value { font-size: 1.8rem; font-weight: 700; margin-top: 0.25rem; }
+        .stat-card .sub { font-size: 0.8rem; color: var(--text2); margin-top: 0.25rem; }
+        .stat-card.critical .value { color: var(--red); }
+        .stat-card.high .value { color: var(--orange); }
+        .stat-card.info .value { color: var(--blue); }
+
+        .section {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 0.75rem; margin-bottom: 1.5rem; overflow: hidden;
+        }
+        .section-header {
+            padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+        }
+        .section-header h2 { font-size: 1rem; font-weight: 600; }
+        .section-body { padding: 1.5rem; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .threat-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .threat-card {
+            border-radius: 0.5rem; padding: 1rem 1.25rem;
+            border-left: 4px solid; background: rgba(15, 23, 42, 0.5);
+        }
+        .threat-card.critical { border-color: #dc2626; }
+        .threat-card.high { border-color: #ea580c; }
+        .threat-card.medium { border-color: #d97706; }
+        .threat-card.low { border-color: #2563eb; }
+        .threat-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.4rem; }
+        .severity-badge {
+            font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+            padding: 0.15rem 0.5rem; border-radius: 0.25rem; color: white;
+            letter-spacing: 0.05em;
+        }
+        .severity-badge.critical { background: #dc2626; }
+        .severity-badge.high { background: #ea580c; }
+        .severity-badge.medium { background: #d97706; }
+        .severity-badge.low { background: #2563eb; }
+        .threat-title { font-weight: 600; font-size: 0.95rem; }
+        .threat-desc { font-size: 0.85rem; color: var(--text2); margin-bottom: 0.5rem; }
+        .threat-meta { font-size: 0.75rem; color: var(--text3); display: flex; gap: 1rem; flex-wrap: wrap; }
+        .threat-detail {
+            margin-top: 0.75rem; padding: 0.75rem;
+            background: rgba(0,0,0,0.3); border-radius: 0.4rem;
+            font-family: 'Consolas', monospace; font-size: 0.8rem;
+            white-space: pre-wrap; color: var(--text2);
+        }
+
+        .timeline-track { position: relative; padding-left: 180px; }
+        .timeline-line {
+            position: absolute; left: 170px; top: 0; bottom: 0;
+            width: 2px; background: linear-gradient(to bottom, var(--blue), var(--purple), var(--cyan));
+        }
+        .timeline-event {
+            position: relative; padding: 0.6rem 0 0.6rem 2rem;
+            min-height: 40px; display: flex; align-items: flex-start;
+        }
+        .timeline-time {
+            position: absolute; left: -170px; width: 160px; text-align: right;
+            font-size: 0.72rem; color: var(--text3); font-family: 'Consolas', monospace;
+            padding-top: 0.2rem;
+        }
+        .timeline-dot {
+            position: absolute; left: -5px; top: 0.75rem;
+            width: 12px; height: 12px; border-radius: 50%;
+            border: 2px solid var(--bg); z-index: 1;
+        }
+        .timeline-dot.eid-1 { background: var(--red); }
+        .timeline-dot.eid-3 { background: var(--cyan); }
+        .timeline-dot.eid-5 { background: var(--text3); }
+        .timeline-dot.eid-6 { background: var(--green); }
+        .timeline-content {
+            background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border);
+            border-radius: 0.4rem; padding: 0.5rem 0.75rem; flex: 1; font-size: 0.82rem;
+        }
+        .eid-tag {
+            font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.4rem;
+            border-radius: 0.2rem; margin-right: 0.5rem; display: inline-block;
+        }
+        .eid-tag.eid-1 { background: rgba(239,68,68,0.2); color: #fca5a5; }
+        .eid-tag.eid-3 { background: rgba(6,182,212,0.2); color: #67e8f9; }
+        .eid-tag.eid-5 { background: rgba(100,116,139,0.2); color: #94a3b8; }
+        .eid-tag.eid-6 { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .data-table th {
+            text-align: left; padding: 0.6rem 0.75rem;
+            background: rgba(15,23,42,0.5); color: var(--text2);
+            font-weight: 600; font-size: 0.75rem; text-transform: uppercase;
+            letter-spacing: 0.03em; border-bottom: 1px solid var(--border);
+        }
+        .data-table td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid rgba(148,163,184,0.05);
+            color: var(--text2); max-width: 400px; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
+        }
+        .tag { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 0.2rem; font-size: 0.72rem; font-weight: 600; }
+        .tag-high { background: rgba(239,68,68,0.15); color: #fca5a5; }
+
+        .chart-box {
+            background: rgba(15,23,42,0.5); border-radius: 0.5rem;
+            padding: 1rem; margin-bottom: 0.75rem;
+        }
+        .chart-bar-row {
+            display: flex; align-items: center; gap: 0.75rem;
+            margin-bottom: 0.4rem; font-size: 0.8rem;
+        }
+        .chart-bar-label { min-width: 150px; text-align: right; color: var(--text2); font-size: 0.78rem; }
+        .chart-bar-track { flex: 1; height: 20px; background: rgba(148,163,184,0.1); border-radius: 3px; overflow: hidden; }
+        .chart-bar-fill { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: 6px; font-size: 0.7rem; color: white; font-weight: 600; }
+        .chart-bar-fill.eid-1 { background: var(--red); }
+        .chart-bar-fill.eid-3 { background: var(--cyan); }
+        .chart-bar-fill.eid-5 { background: var(--text3); }
+        .chart-bar-fill.eid-6 { background: var(--green); }
+        .chart-bar-fill.sev-critical { background: #dc2626; }
+        .chart-bar-fill.sev-high { background: #ea580c; }
+        .chart-bar-fill.sev-medium { background: #d97706; }
+        .chart-bar-fill.sev-low { background: #2563eb; }
+        .chart-bar-fill.ip { background: var(--blue); }
+
+        .summary-box {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.5rem; margin-bottom: 1rem;
+        }
+        .summary-item {
+            background: rgba(15,23,42,0.5); border-radius: 0.5rem;
+            padding: 0.75rem; text-align: center;
+        }
+        .summary-item .num { font-size: 1.5rem; font-weight: 700; }
+        .summary-item .lbl { font-size: 0.7rem; color: var(--text3); text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <div class="report-header">
+        <h1>🛡️ Sysmon EVTX Analysis Report</h1>
+        <p>파일: {{ analysis.filename }} | 분석 기간: {{ analysis.time_range.start[:19] }} ~ {{ analysis.time_range.end[:19] }} | 호스트: {{ analysis.computers|join(', ') }}</p>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="stats-grid">
+        <div class="stat-card info">
+            <div class="label">총 이벤트</div>
+            <div class="value">{{ analysis.total_events }}</div>
+            <div class="sub">{{ analysis.filename }}</div>
+        </div>
+        <div class="stat-card {% if analysis.threat_summary.critical > 0 %}critical{% elif analysis.threat_summary.high > 0 %}high{% else %}info{% endif %}">
+            <div class="label">탐지된 위협</div>
+            <div class="value">{{ analysis.threats|length }}</div>
+            <div class="sub">
+                {% if analysis.threat_summary.critical > 0 %}Critical: {{ analysis.threat_summary.critical }}{% endif %}
+                {% if analysis.threat_summary.high > 0 %} | High: {{ analysis.threat_summary.high }}{% endif %}
+                {% if analysis.threat_summary.medium > 0 %} | Medium: {{ analysis.threat_summary.medium }}{% endif %}
+            </div>
+        </div>
+        <div class="stat-card info">
+            <div class="label">분석 기간</div>
+            <div class="value" style="font-size:1rem;">{{ analysis.time_range.start[:19] }}</div>
+            <div class="sub">~ {{ analysis.time_range.end[:19] }}</div>
+        </div>
+        <div class="stat-card info">
+            <div class="label">대상 호스트</div>
+            <div class="value" style="font-size:1.3rem;">{{ analysis.computers|join(', ') }}</div>
+            <div class="sub">사용자: {{ analysis.users|join(', ') }}</div>
+        </div>
+    </div>
+
+    <!-- Event Distribution (CSS-only chart) -->
+    <div class="grid-2">
+        <div class="section">
+            <div class="section-header"><h2>📊 이벤트 유형 분포</h2></div>
+            <div class="section-body">
+                {% set eid_names = {1: 'Process Create', 3: 'Network Connection', 5: 'Process Terminated', 6: 'Driver Loaded'} %}
+                {% set max_count = analysis.eid_distribution.values()|max %}
+                <div class="chart-box">
+                    {% for eid, count in analysis.eid_distribution.items()|sort %}
+                    <div class="chart-bar-row">
+                        <div class="chart-bar-label">{{ eid_names.get(eid|int, 'Event ' ~ eid) }}</div>
+                        <div class="chart-bar-track">
+                            <div class="chart-bar-fill eid-{{ eid }}" style="width: {{ (count / max_count * 100)|round }}%">{{ count }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="section">
+            <div class="section-header"><h2>📋 위협 심각도 분포</h2></div>
+            <div class="section-body">
+                {% set sev_names = {'critical': 'Critical', 'high': 'High', 'medium': 'Medium', 'low': 'Low', 'info': 'Info'} %}
+                {% set total_threats = analysis.threats|length %}
+                <div class="summary-box">
+                    {% for sev, count in analysis.threat_summary.items() %}
+                    {% if count > 0 %}
+                    <div class="summary-item">
+                        <div class="num" style="color: {{ {'critical':'#dc2626','high':'#ea580c','medium':'#d97706','low':'#2563eb','info':'#6b7280'}[sev] }}">{{ count }}</div>
+                        <div class="lbl">{{ sev_names[sev] }}</div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% if total_threats > 0 %}
+                <div class="chart-box">
+                    {% for sev, count in analysis.threat_summary.items() %}
+                    {% if count > 0 %}
+                    <div class="chart-bar-row">
+                        <div class="chart-bar-label">{{ sev_names[sev] }}</div>
+                        <div class="chart-bar-track">
+                            <div class="chart-bar-fill sev-{{ sev }}" style="width: {{ (count / total_threats * 100)|round }}%">{{ count }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Threat Detection -->
+    <div class="section">
+        <div class="section-header">
+            <h2>🚨 보안 위협 탐지 결과 ({{ analysis.threats|length }}건)</h2>
+        </div>
+        <div class="section-body">
+            {% if analysis.threats %}
+            <div class="threat-list">
+                {% for threat in analysis.threats %}
+                <div class="threat-card {{ threat.severity }}">
+                    <div class="threat-header">
+                        <span class="severity-badge {{ threat.severity }}">{{ threat.severity }}</span>
+                        <span class="threat-title">{{ threat.title }}</span>
+                    </div>
+                    <div class="threat-desc">{{ threat.description }}</div>
+                    <div class="threat-meta">
+                        <span>⏰ {{ threat.timestamp[:19] }}</span>
+                        <span>🎯 {{ threat.mitre }}</span>
+                    </div>
+                    <div class="threat-detail">{{ threat.detail }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="text-align:center;color:var(--text3);">위협이 탐지되지 않았습니다.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="section">
+        <div class="section-header"><h2>🕐 이벤트 타임라인</h2></div>
+        <div class="section-body">
+            <div class="timeline-track">
+                <div class="timeline-line"></div>
+                {% for item in analysis.timeline %}
+                <div class="timeline-event">
+                    <div class="timeline-time">{{ item.timestamp[11:19] if item.timestamp|length > 19 else item.timestamp }}</div>
+                    <div class="timeline-dot eid-{{ item.event_id }}"></div>
+                    <div class="timeline-content">
+                        <span class="eid-tag eid-{{ item.event_id }}">{{ item.event_name }}</span>
+                        {{ item.label }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Process Creation -->
+    {% if analysis.process_tree %}
+    <div class="section">
+        <div class="section-header"><h2>⚙️ 프로세스 생성 이벤트 ({{ analysis.process_tree|length }}건)</h2></div>
+        <div class="section-body">
+            <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>시각</th>
+                        <th>프로세스</th>
+                        <th>명령어</th>
+                        <th>부모 프로세스</th>
+                        <th>사용자</th>
+                        <th>권한</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in analysis.process_tree %}
+                    <tr>
+                        <td style="white-space:nowrap;font-family:Consolas,monospace;font-size:0.75rem;">{{ p.timestamp[:19] }}</td>
+                        <td>{{ p.image.split('\\')[-1] }}</td>
+                        <td title="{{ p.cmd }}">{{ p.cmd[:80] }}{% if p.cmd|length > 80 %}...{% endif %}</td>
+                        <td>{{ p.parent_image.split('\\')[-1] }}</td>
+                        <td>{{ p.user }}</td>
+                        <td>
+                            {% if p.integrity == 'High' or p.integrity == 'System' %}
+                            <span class="tag tag-high">{{ p.integrity }}</span>
+                            {% else %}
+                            {{ p.integrity }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Network Connections -->
+    {% if analysis.network_summary %}
+    <div class="section">
+        <div class="section-header"><h2>🌐 네트워크 연결 이벤트 ({{ analysis.network_summary|length }}건)</h2></div>
+        <div class="section-body">
+            <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>시각</th>
+                        <th>프로세스</th>
+                        <th>출발지</th>
+                        <th>목적지</th>
+                        <th>프로토콜</th>
+                        <th>Initiated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for n in analysis.network_summary %}
+                    <tr>
+                        <td style="white-space:nowrap;font-family:Consolas,monospace;font-size:0.75rem;">{{ n.timestamp[:19] }}</td>
+                        <td>{{ n.process.split('\\')[-1] }}</td>
+                        <td>{{ n.src_ip }}:{{ n.src_port }}</td>
+                        <td>{{ n.dst_ip }}:{{ n.dst_port }}</td>
+                        <td>{{ n.protocol }}</td>
+                        <td>{{ n.initiated }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- IP Statistics -->
+    {% if analysis.ip_counter %}
+    <div class="section">
+        <div class="section-header"><h2>🌍 IP 통신 통계</h2></div>
+        <div class="section-body">
+            {% set max_ip = analysis.ip_counter.values()|max %}
+            <div class="chart-box">
+                {% for ip, count in analysis.ip_counter.items() %}
+                <div class="chart-bar-row">
+                    <div class="chart-bar-label">{{ ip }}</div>
+                    <div class="chart-bar-track">
+                        <div class="chart-bar-fill ip" style="width: {{ (count / max_ip * 100)|round }}%">{{ count }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div style="text-align:center;padding:2rem;color:var(--text3);font-size:0.8rem;">
+        Generated by Sysmon EVTX Analyzer
+    </div>
+</body>
+</html>
