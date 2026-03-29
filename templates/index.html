@@ -53,13 +53,14 @@
             padding: 3rem 2rem;
             cursor: pointer;
             transition: all 0.3s;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             position: relative;
         }
         .drop-zone:hover, .drop-zone.dragover {
             border-color: #60a5fa;
             background: rgba(59, 130, 246, 0.05);
         }
+        .drop-zone.error { border-color: #ef4444; }
         .drop-zone .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
         .drop-zone p { color: #94a3b8; font-size: 0.95rem; }
         .drop-zone .filename {
@@ -68,6 +69,11 @@
             font-size: 1rem;
             margin-top: 0.5rem;
         }
+        .drop-zone .filesize {
+            color: #64748b;
+            font-size: 0.82rem;
+            margin-top: 0.25rem;
+        }
         .drop-zone input[type="file"] {
             position: absolute;
             width: 100%;
@@ -75,6 +81,45 @@
             top: 0; left: 0;
             opacity: 0;
             cursor: pointer;
+        }
+        .file-info {
+            display: none;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            text-align: left;
+            font-size: 0.82rem;
+        }
+        .file-info.show { display: block; }
+        .file-info .fi-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.2rem 0;
+        }
+        .file-info .fi-label { color: #64748b; }
+        .file-info .fi-value { color: #e2e8f0; font-weight: 600; }
+        .file-info .fi-value.warn { color: #f59e0b; }
+        .file-info .fi-value.ok { color: #10b981; }
+        .file-info .fi-estimate {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+            color: #94a3b8;
+            font-size: 0.78rem;
+            text-align: center;
+        }
+        .error-msg {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            display: {% if error %}block{% else %}none{% endif %};
         }
         .btn {
             display: inline-block;
@@ -139,17 +184,103 @@
         .feature .fi { font-size: 1.5rem; margin-bottom: 0.5rem; }
         .feature h3 { font-size: 0.8rem; color: #cbd5e1; margin-bottom: 0.25rem; }
         .feature p { font-size: 0.7rem; color: #64748b; }
-        .spinner {
+        .limit-note {
+            color: #64748b;
+            font-size: 0.72rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Analysis overlay */
+        .analysis-overlay {
             display: none;
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(255,255,255,0.2);
-            border-top-color: white;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.92);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+        .analysis-overlay.show { display: flex; }
+        .analysis-box {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 1rem;
+            padding: 3rem;
+            text-align: center;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+        .analysis-spinner {
+            width: 56px; height: 56px;
+            border: 4px solid rgba(96, 165, 250, 0.15);
+            border-top-color: #60a5fa;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .analysis-box h2 {
+            font-size: 1.2rem;
+            color: #e2e8f0;
+            margin-bottom: 0.5rem;
+        }
+        .analysis-box .status-text {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+        .analysis-box .estimate-text {
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(148, 163, 184, 0.1);
+            border-radius: 3px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            border-radius: 3px;
+            animation: indeterminate 1.8s ease-in-out infinite;
+        }
+        @keyframes indeterminate {
+            0% { width: 0%; margin-left: 0%; }
+            50% { width: 60%; margin-left: 20%; }
+            100% { width: 0%; margin-left: 100%; }
+        }
+        .step-list {
+            text-align: left;
+            margin-top: 1rem;
+        }
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.35rem 0;
+            font-size: 0.8rem;
+            color: #64748b;
+            transition: color 0.3s;
+        }
+        .step-item.active { color: #60a5fa; }
+        .step-item.done { color: #10b981; }
+        .step-icon {
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            flex-shrink: 0;
+        }
+        .step-item.active .step-icon { border-color: #60a5fa; }
+        .step-item.done .step-icon { border-color: #10b981; background: rgba(16,185,129,0.15); }
     </style>
 </head>
 <body>
@@ -160,16 +291,29 @@
 
         <div class="upload-card">
             <form id="uploadForm" action="/analyze" method="post" enctype="multipart/form-data">
+                <div class="error-msg" id="errorMsg">{{ error or '' }}</div>
                 <div class="drop-zone" id="dropZone">
                     <div class="icon">📁</div>
                     <p>EVTX 파일을 드래그하거나 클릭하여 업로드</p>
                     <p class="filename" id="fileName"></p>
+                    <p class="filesize" id="fileSize"></p>
                     <input type="file" name="evtx_file" id="evtxFile" accept=".evtx">
                 </div>
+                <div class="file-info" id="fileInfo">
+                    <div class="fi-row">
+                        <span class="fi-label">파일 크기</span>
+                        <span class="fi-value" id="fiSize">-</span>
+                    </div>
+                    <div class="fi-row">
+                        <span class="fi-label">업로드 가능</span>
+                        <span class="fi-value" id="fiStatus">-</span>
+                    </div>
+                    <div class="fi-estimate" id="fiEstimate"></div>
+                </div>
                 <button type="submit" class="btn btn-primary" id="analyzeBtn" disabled>
-                    <span id="btnText">분석 시작</span>
-                    <div class="spinner" id="spinner"></div>
+                    분석 시작
                 </button>
+                <p class="limit-note">최대 업로드 크기: {{ max_upload_mb or 500 }}MB</p>
             </form>
             <div class="divider">또는</div>
             <a href="/analyze_default" class="btn btn-secondary" id="defaultBtn">
@@ -196,18 +340,105 @@
         </div>
     </div>
 
+    <!-- Analysis Progress Overlay -->
+    <div class="analysis-overlay" id="analysisOverlay">
+        <div class="analysis-box">
+            <div class="analysis-spinner"></div>
+            <h2>EVTX 파일 분석 중...</h2>
+            <p class="status-text" id="overlayStatus">파일을 서버로 업로드하고 있습니다</p>
+            <div class="progress-bar"><div class="fill"></div></div>
+            <p class="estimate-text" id="overlayEstimate"></p>
+            <div class="step-list" id="stepList">
+                <div class="step-item active" id="step1">
+                    <div class="step-icon">1</div>
+                    <span>파일 업로드</span>
+                </div>
+                <div class="step-item" id="step2">
+                    <div class="step-icon">2</div>
+                    <span>EVTX 이벤트 파싱</span>
+                </div>
+                <div class="step-item" id="step3">
+                    <div class="step-icon">3</div>
+                    <span>보안 위협 탐지</span>
+                </div>
+                <div class="step-item" id="step4">
+                    <div class="step-icon">4</div>
+                    <span>프로세스 트리 분석</span>
+                </div>
+                <div class="step-item" id="step5">
+                    <div class="step-icon">5</div>
+                    <span>시각화 렌더링</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        const MAX_MB = {{ max_upload_mb or 500 }};
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('evtxFile');
         const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
         const analyzeBtn = document.getElementById('analyzeBtn');
         const form = document.getElementById('uploadForm');
+        const fileInfo = document.getElementById('fileInfo');
+        const errorMsg = document.getElementById('errorMsg');
+        const overlay = document.getElementById('analysisOverlay');
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function estimateTime(mb) {
+            if (mb < 2) return '약 3~5초';
+            if (mb < 10) return '약 5~15초';
+            if (mb < 50) return '약 15~45초';
+            if (mb < 100) return '약 1~2분';
+            if (mb < 200) return '약 2~5분';
+            return '약 5~10분 이상';
+        }
+
+        function handleFile(file) {
+            if (!file) return;
+            const sizeMB = file.size / (1024 * 1024);
+            fileName.textContent = file.name;
+            fileSize.textContent = formatSize(file.size);
+            fileInfo.classList.add('show');
+            errorMsg.style.display = 'none';
+            dropZone.classList.remove('error');
+
+            document.getElementById('fiSize').textContent = formatSize(file.size);
+
+            if (sizeMB > MAX_MB) {
+                document.getElementById('fiStatus').textContent = '초과';
+                document.getElementById('fiStatus').className = 'fi-value warn';
+                document.getElementById('fiEstimate').textContent =
+                    `파일이 ${MAX_MB}MB 제한을 초과합니다 (${sizeMB.toFixed(1)}MB). 업로드할 수 없습니다.`;
+                analyzeBtn.disabled = true;
+                dropZone.classList.add('error');
+                return;
+            }
+
+            document.getElementById('fiStatus').textContent = 'OK';
+            document.getElementById('fiStatus').className = 'fi-value ok';
+            document.getElementById('fiEstimate').textContent =
+                `예상 분석 시간: ${estimateTime(sizeMB)} (파일 크기: ${sizeMB.toFixed(1)}MB)`;
+
+            if (!file.name.toLowerCase().endsWith('.evtx')) {
+                document.getElementById('fiStatus').textContent = '잘못된 형식';
+                document.getElementById('fiStatus').className = 'fi-value warn';
+                document.getElementById('fiEstimate').textContent = '.evtx 파일만 업로드 가능합니다.';
+                analyzeBtn.disabled = true;
+                return;
+            }
+
+            analyzeBtn.disabled = false;
+        }
 
         fileInput.addEventListener('change', () => {
-            if (fileInput.files.length > 0) {
-                fileName.textContent = fileInput.files[0].name;
-                analyzeBtn.disabled = false;
-            }
+            if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
         });
 
         dropZone.addEventListener('dragover', e => {
@@ -219,21 +450,58 @@
             e.preventDefault();
             dropZone.classList.remove('dragover');
             fileInput.files = e.dataTransfer.files;
-            if (fileInput.files.length > 0) {
-                fileName.textContent = fileInput.files[0].name;
-                analyzeBtn.disabled = false;
-            }
+            if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
         });
 
-        form.addEventListener('submit', () => {
-            document.getElementById('btnText').style.display = 'none';
-            document.getElementById('spinner').style.display = 'block';
-            analyzeBtn.disabled = true;
+        function advanceStep(currentStep, delay) {
+            setTimeout(() => {
+                for (let i = 1; i <= 5; i++) {
+                    const el = document.getElementById('step' + i);
+                    if (i < currentStep) {
+                        el.className = 'step-item done';
+                        el.querySelector('.step-icon').textContent = '✓';
+                    } else if (i === currentStep) {
+                        el.className = 'step-item active';
+                    } else {
+                        el.className = 'step-item';
+                    }
+                }
+                const messages = {
+                    1: '파일을 서버로 업로드하고 있습니다',
+                    2: 'EVTX 이벤트 레코드를 파싱하고 있습니다',
+                    3: '보안 위협 패턴을 분석하고 있습니다',
+                    4: '프로세스 트리를 구축하고 있습니다',
+                    5: '시각화 결과를 렌더링하고 있습니다',
+                };
+                document.getElementById('overlayStatus').textContent = messages[currentStep] || '';
+            }, delay);
+        }
+
+        form.addEventListener('submit', function(e) {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const sizeMB = file.size / (1024 * 1024);
+            overlay.classList.add('show');
+            document.getElementById('overlayEstimate').textContent =
+                `예상 소요 시간: ${estimateTime(sizeMB)} (${sizeMB.toFixed(1)}MB)`;
+
+            const baseDelay = Math.max(2000, sizeMB * 200);
+            advanceStep(1, 0);
+            advanceStep(2, Math.min(baseDelay * 0.3, 5000));
+            advanceStep(3, Math.min(baseDelay * 0.6, 15000));
+            advanceStep(4, Math.min(baseDelay * 0.8, 25000));
+            advanceStep(5, Math.min(baseDelay * 0.95, 40000));
         });
 
         document.getElementById('defaultBtn').addEventListener('click', function() {
-            this.textContent = '분석 중...';
-            this.style.pointerEvents = 'none';
+            overlay.classList.add('show');
+            document.getElementById('overlayEstimate').textContent = '예상 소요 시간: 약 3~5초 (1.1MB)';
+            advanceStep(1, 0);
+            advanceStep(2, 500);
+            advanceStep(3, 1500);
+            advanceStep(4, 2500);
+            advanceStep(5, 3500);
         });
     </script>
 </body>

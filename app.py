@@ -8,8 +8,10 @@ import tempfile
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = tempfile.mkdtemp()
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 app.secret_key = os.urandom(24)
+
+MAX_UPLOAD_MB = 500
 
 _analysis_cache = {}
 
@@ -522,9 +524,15 @@ def build_analysis(events):
     }
 
 
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return render_template('index.html',
+                           error=f'파일 크기가 {MAX_UPLOAD_MB}MB 제한을 초과했습니다. 더 작은 파일을 업로드해 주세요.'), 413
+
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', max_upload_mb=MAX_UPLOAD_MB)
 
 
 @app.route('/analyze', methods=['POST'])
@@ -538,11 +546,13 @@ def analyze():
 
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     file.save(filepath)
+    file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
 
     try:
         events = parse_evtx(filepath)
         analysis = build_analysis(events)
         analysis['filename'] = file.filename
+        analysis['file_size_mb'] = round(file_size_mb, 1)
         cache_key = os.urandom(8).hex()
         _analysis_cache[cache_key] = analysis
         return render_template('result.html', analysis=analysis, cache_key=cache_key)
@@ -557,9 +567,11 @@ def analyze_default():
     if not os.path.exists(default_file):
         return redirect(url_for('index'))
 
+    file_size_mb = os.path.getsize(default_file) / (1024 * 1024)
     events = parse_evtx(default_file)
     analysis = build_analysis(events)
     analysis['filename'] = '01_sysmon_quiz.evtx'
+    analysis['file_size_mb'] = round(file_size_mb, 1)
     cache_key = os.urandom(8).hex()
     _analysis_cache[cache_key] = analysis
     return render_template('result.html', analysis=analysis, cache_key=cache_key)
