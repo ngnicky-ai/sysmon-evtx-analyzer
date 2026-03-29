@@ -12,6 +12,10 @@ A Flask-based web application that parses Windows Sysmon EVTX event logs, visual
 ![Threat Detection](results_img/sysmon_02.png)
 *Automated threat detection with severity levels (Critical / High / Medium), detailed descriptions, MITRE ATT&CK technique IDs, and expandable forensic details.*
 
+### Process Tree (Parent-Child Relationship)
+![Process Tree](results_img/sysmon_04.png)
+*Interactive process tree showing parent-child execution chains with associated network connections. Suspicious processes are highlighted with warning indicators, and known attack ports (e.g., 4444) are flagged in red.*
+
 ### Network Analysis & IP Statistics
 ![Network Analysis](results_img/sysmon_03.png)
 *Network connection table with source/destination tracking and IP communication frequency chart.*
@@ -19,6 +23,13 @@ A Flask-based web application that parses Windows Sysmon EVTX event logs, visual
 ## Features
 
 - **EVTX Parsing** — Drag-and-drop upload or analyze a bundled sample file instantly
+- **Process Tree Visualization** — Interactive parent-child process relationship graph:
+  - Hierarchical tree layout with visual connectors showing execution chains
+  - Network connections displayed inline on each process node
+  - Suspicious processes highlighted with warning icons and red borders
+  - Virtual parent nodes for processes whose parents are not captured in the log
+  - Attack chain auto-detection (e.g., `hfs.exe → wscript.exe → payload.exe → cmd.exe`)
+  - Click-to-expand detailed forensic information (full path, command line, all network connections)
 - **Timeline Visualization** — Chronological event timeline with color-coded event types and filtering
 - **Threat Detection** — Rule-based engine that identifies suspicious behaviors:
   - Web server spawning child processes (RCE / web shell indicators)
@@ -91,7 +102,8 @@ sysmon-evtx-analyzer/
 └── results_img/                    # Sample screenshots
     ├── sysmon_01.png
     ├── sysmon_02.png
-    └── sysmon_03.png
+    ├── sysmon_03.png
+    └── sysmon_04.png
 ```
 
 ## Tech Stack
