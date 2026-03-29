@@ -148,6 +148,41 @@
         .tag { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 0.2rem; font-size: 0.72rem; font-weight: 600; }
         .tag-high { background: rgba(239,68,68,0.15); color: #fca5a5; }
 
+        .ptree-node { position: relative; margin-left: 2rem; }
+        .ptree-node.root { margin-left: 0; }
+        .ptree-node::before {
+            content: ''; position: absolute; left: -1.5rem; top: 0;
+            width: 1.5rem; height: 1.2rem;
+            border-left: 2px solid rgba(148,163,184,0.2);
+            border-bottom: 2px solid rgba(148,163,184,0.2);
+            border-radius: 0 0 0 6px;
+        }
+        .ptree-node.root::before { display: none; }
+        .ptree-children { border-left: 2px solid rgba(148,163,184,0.2); margin-left: 0.5rem; }
+        .ptree-card {
+            display: inline-flex; flex-direction: column;
+            background: var(--bg3); border: 1px solid var(--border);
+            border-radius: 0.5rem; padding: 0.6rem 0.9rem;
+            margin-bottom: 0.5rem; min-width: 200px; max-width: 480px;
+        }
+        .ptree-card.virtual { border-style: dashed; opacity: 0.7; }
+        .ptree-card.suspicious { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.05); }
+        .ptree-card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; }
+        .ptree-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
+        .ptree-icon.proc { background: rgba(59,130,246,0.15); }
+        .ptree-icon.mal { background: rgba(239,68,68,0.15); }
+        .ptree-proc-name { font-weight: 700; font-size: 0.88rem; color: var(--text); word-break: break-all; }
+        .ptree-pid { font-size: 0.68rem; color: var(--text3); font-family: Consolas, monospace; }
+        .ptree-meta { font-size: 0.72rem; color: var(--text3); margin-top: 0.15rem; }
+        .ptree-detail { margin-top: 0.5rem; padding: 0.5rem; background: rgba(0,0,0,0.25); border-radius: 0.35rem; font-size: 0.75rem; font-family: Consolas, monospace; color: var(--text2); white-space: pre-wrap; word-break: break-all; }
+        .ptree-net-list { margin-top: 0.4rem; display: flex; flex-direction: column; gap: 0.3rem; }
+        .ptree-net-badge { display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.2); border-radius: 0.35rem; padding: 0.3rem 0.5rem; font-size: 0.72rem; font-family: Consolas, monospace; color: #67e8f9; }
+        .ptree-net-badge.suspicious-port { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.3); color: #fca5a5; }
+        .ptree-arrow { color: var(--text3); }
+        .ptree-group { background: var(--bg2); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1rem; }
+        .ptree-group-label { font-size: 0.72rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .chain-tag { font-size: 0.6rem; padding: 0.1rem 0.4rem; border-radius: 0.2rem; background: rgba(239,68,68,0.15); color: #fca5a5; font-weight: 600; }
+
         .chart-box {
             background: rgba(15,23,42,0.5); border-radius: 0.5rem;
             padding: 1rem; margin-bottom: 0.75rem;
@@ -295,6 +330,75 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Process Tree -->
+    {% if analysis.proc_graph %}
+    <div class="section">
+        <div class="section-header"><h2>🌳 프로세스 트리 (부모-자식 관계)</h2></div>
+        <div class="section-body">
+            {% macro render_node_dl(node, is_root=False) %}
+            {% set suspicious_names = ['wscript.exe','cscript.exe','powershell.exe','cmd.exe','mshta.exe','regsvr32.exe','rundll32.exe','certutil.exe'] %}
+            {% set suspicious_ports = [4444,4445,5555,8888,1234,31337,6666,7777,9999] %}
+            {% set is_suspicious = node.name|lower in suspicious_names or node.get('virtual', False) == False and node.name|lower not in ['conhost.exe','dllhost.exe','searchprotocolhost.exe','searchfilterhost.exe','mpcmdrun.exe','svchost.exe','csrss.exe','services.exe','searchindexer.exe'] and node.parent_name|lower in ['hfs.exe','httpd.exe','nginx.exe','w3wp.exe'] %}
+            <div class="ptree-node {{ 'root' if is_root else '' }}">
+                <div class="ptree-card {{ 'virtual' if node.get('virtual') else '' }} {{ 'suspicious' if is_suspicious else '' }}">
+                    <div class="ptree-card-header">
+                        <div class="ptree-icon {{ 'mal' if is_suspicious else 'proc' }}">
+                            {% if is_suspicious %}⚠️{% elif node.get('virtual') %}👻{% else %}⚙️{% endif %}
+                        </div>
+                        <div>
+                            <div class="ptree-proc-name">{{ node.name or 'Unknown' }}</div>
+                            {% if node.pid %}
+                            <div class="ptree-pid">PID: {{ node.pid }}{% if node.timestamp %} | {{ node.timestamp[:19] }}{% endif %}</div>
+                            {% elif node.get('virtual') %}
+                            <div class="ptree-pid">Parent process (not in log)</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if node.user %}
+                    <div class="ptree-meta">👤 {{ node.user }}{% if node.integrity %} | 🔒 {{ node.integrity }}{% endif %}</div>
+                    {% endif %}
+                    {% if node.network %}
+                    <div class="ptree-net-list">
+                        {% for conn in node.network[:5] %}
+                        <div class="ptree-net-badge {{ 'suspicious-port' if conn.dst_port|int in suspicious_ports or conn.src_port|int in suspicious_ports else '' }}">
+                            🌐 {{ conn.src_ip }}:{{ conn.src_port }} <span class="ptree-arrow">→</span> {{ conn.dst_ip }}:{{ conn.dst_port }} ({{ conn.protocol }})
+                        </div>
+                        {% endfor %}
+                        {% if node.network|length > 5 %}
+                        <div class="ptree-meta">... +{{ node.network|length - 5 }} more connections</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% if node.cmd %}
+                    <div class="ptree-detail">Command: {{ node.cmd }}</div>
+                    {% endif %}
+                </div>
+                {% if node.children_nodes %}
+                <div class="ptree-children">
+                    {% for child in node.children_nodes %}
+                    {{ render_node_dl(child) }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endmacro %}
+
+            {% for tree in analysis.proc_graph %}
+            <div class="ptree-group">
+                <div class="ptree-group-label">
+                    🔗 Process Chain: {{ tree.name or 'Unknown' }}
+                    {% if tree.children_nodes|length > 0 %}→ {{ tree.children_nodes|length }} child{{ 's' if tree.children_nodes|length > 1 else '' }}{% endif %}
+                    {% if tree.name|lower in ['hfs.exe','httpd.exe'] %}
+                    <span class="chain-tag">ATTACK CHAIN</span>
+                    {% endif %}
+                </div>
+                {{ render_node_dl(tree, is_root=True) }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Timeline -->
     <div class="section">

@@ -289,6 +289,134 @@ def detect_threats(events):
     return unique_threats
 
 
+def _build_process_graph(process_creates, network_conns, process_terms):
+    nodes = {}
+    for e in process_creates:
+        ed = e['event_data']
+        guid = ed.get('ProcessGuid', '')
+        parent_guid = ed.get('ParentProcessGuid', '')
+        image = ed.get('Image', '')
+        name = os.path.basename(image)
+        nodes[guid] = {
+            'guid': guid,
+            'parent_guid': parent_guid,
+            'name': name,
+            'image': image,
+            'pid': ed.get('ProcessId', ''),
+            'cmd': ed.get('CommandLine', ''),
+            'parent_image': ed.get('ParentImage', ''),
+            'parent_name': os.path.basename(ed.get('ParentImage', '')),
+            'user': ed.get('User', ''),
+            'integrity': ed.get('IntegrityLevel', ''),
+            'timestamp': e['timestamp'],
+            'children': [],
+            'network': [],
+            'terminated': False,
+        }
+
+    net_by_guid = defaultdict(list)
+    net_by_image = defaultdict(list)
+    for e in network_conns:
+        ed = e['event_data']
+        conn = {
+            'src_ip': ed.get('SourceIp', ''),
+            'src_port': ed.get('SourcePort', ''),
+            'dst_ip': ed.get('DestinationIp', ''),
+            'dst_port': ed.get('DestinationPort', ''),
+            'protocol': ed.get('Protocol', ''),
+            'initiated': ed.get('Initiated', ''),
+            'timestamp': e['timestamp'],
+        }
+        guid = ed.get('ProcessGuid', '')
+        image = ed.get('Image', '')
+        net_by_guid[guid].append(conn)
+        net_by_image[image.lower()].append(conn)
+
+    term_guids = set()
+    for e in process_terms:
+        ed = e['event_data']
+        term_guids.add(ed.get('ProcessGuid', ''))
+
+    for guid, node in nodes.items():
+        if guid in net_by_guid:
+            node['network'] = net_by_guid[guid]
+        elif node['image'].lower() in net_by_image:
+            node['network'] = net_by_image[node['image'].lower()]
+        if guid in term_guids:
+            node['terminated'] = True
+
+    for guid, node in nodes.items():
+        pg = node['parent_guid']
+        if pg in nodes:
+            nodes[pg]['children'].append(guid)
+
+    child_guids = set()
+    for node in nodes.values():
+        child_guids.update(node['children'])
+    root_guids = [g for g in nodes if g not in child_guids]
+
+    def build_tree(guid, depth=0):
+        node = nodes[guid]
+        result = dict(node)
+        result['depth'] = depth
+        result['children_nodes'] = [build_tree(cg, depth + 1) for cg in node['children']]
+        return result
+
+    trees = [build_tree(g) for g in root_guids]
+    trees.sort(key=lambda t: t['timestamp'])
+
+    virtual_parents = {}
+    for guid, node in nodes.items():
+        pg = node['parent_guid']
+        if pg not in nodes and pg:
+            if pg not in virtual_parents:
+                virtual_parents[pg] = {
+                    'guid': pg,
+                    'parent_guid': '',
+                    'name': node['parent_name'],
+                    'image': node['parent_image'],
+                    'pid': '',
+                    'cmd': '',
+                    'parent_image': '',
+                    'parent_name': '',
+                    'user': '',
+                    'integrity': '',
+                    'timestamp': '',
+                    'children': [],
+                    'network': [],
+                    'terminated': False,
+                    'virtual': True,
+                    'depth': 0,
+                    'children_nodes': [],
+                }
+                img_lower = node['parent_image'].lower()
+                if img_lower in net_by_image:
+                    virtual_parents[pg]['network'] = net_by_image[img_lower]
+
+    for guid, node in nodes.items():
+        pg = node['parent_guid']
+        if pg in virtual_parents:
+            vp = virtual_parents[pg]
+            already = any(c['guid'] == guid for c in vp['children_nodes'])
+            if not already:
+                vp['children_nodes'].append(build_tree(guid, 1))
+
+    final_trees = []
+    used_roots = set()
+    for pg, vp in virtual_parents.items():
+        if vp['children_nodes']:
+            final_trees.append(vp)
+            for c in vp['children_nodes']:
+                used_roots.add(c['guid'])
+
+    for t in trees:
+        if t['guid'] not in used_roots:
+            final_trees.append(t)
+
+    final_trees.sort(key=lambda t: t.get('timestamp', '') or 'z')
+    return final_trees
+
+
 def build_analysis(events):
     total = len(events)
     eid_counter = Counter(e['event_id'] for e in events)
@@ -368,6 +496,8 @@ def build_analysis(events):
 
     threats = detect_threats(events)
 
+    proc_graph = _build_process_graph(process_creates, network_conns, process_terms)
+
     return {
         'total_events': total,
         'eid_distribution': dict(eid_counter),
@@ -388,6 +518,7 @@ def build_analysis(events):
             'info': sum(1 for t in threats if t['severity'] == 'info'),
         },
         'drivers_loaded': len(drivers),
+        'proc_graph': proc_graph,
     }
 
 
