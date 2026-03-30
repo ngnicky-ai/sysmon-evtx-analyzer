@@ -1,9 +1,12 @@
 import os
 import json
+import sqlite3
+import math
 from datetime import datetime
 from collections import Counter, defaultdict
 from Evtx import PyEvtxParser
-from flask import Flask, render_template, request, send_file, redirect, url_for, session, make_response
+from flask import (Flask, render_template, request, redirect,
+                   url_for, session, make_response, jsonify, g)
 import tempfile
 
 app = Flask(__name__)
@@ -12,8 +15,7 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 app.secret_key = os.urandom(24)
 
 MAX_UPLOAD_MB = 500
-
-_analysis_cache = {}
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'analysis.db')
 
 SYSMON_EVENT_NAMES = {
     1: "Process Create",
@@ -48,6 +50,146 @@ SEVERITY_COLORS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# SQLite helpers
+# ---------------------------------------------------------------------------
+
+def get_db():
+    if 'db' not in g:
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+        g.db = sqlite3.connect(DB_PATH)
+        g.db.row_factory = sqlite3.Row
+        g.db.execute('PRAGMA journal_mode=WAL')
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(exc):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
+
+
+def init_db():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    db = sqlite3.connect(DB_PATH)
+    db.executescript('''
+        CREATE TABLE IF NOT EXISTS analyses (
+            cache_key   TEXT PRIMARY KEY,
+            filename    TEXT,
+            file_size_mb REAL,
+            summary     TEXT,
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS timeline_events (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            cache_key   TEXT NOT NULL,
+            timestamp   TEXT,
+            event_id    INTEGER,
+            event_name  TEXT,
+            label       TEXT,
+            record_id   TEXT
+        );
+        CREATE TABLE IF NOT EXISTS process_events (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            cache_key   TEXT NOT NULL,
+            timestamp   TEXT,
+            image       TEXT,
+            pid         TEXT,
+            cmd         TEXT,
+            parent_image TEXT,
+            parent_pid  TEXT,
+            user        TEXT,
+            integrity   TEXT
+        );
+        CREATE TABLE IF NOT EXISTS network_events (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            cache_key   TEXT NOT NULL,
+            timestamp   TEXT,
+            process     TEXT,
+            src_ip      TEXT,
+            src_port    TEXT,
+            dst_ip      TEXT,
+            dst_port    TEXT,
+            protocol    TEXT,
+            initiated   TEXT
+        );
+        CREATE TABLE IF NOT EXISTS threat_events (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            cache_key   TEXT NOT NULL,
+            severity    TEXT,
+            title       TEXT,
+            description TEXT,
+            detail      TEXT,
+            timestamp   TEXT,
+            mitre       TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_tl_key  ON timeline_events(cache_key);
+        CREATE INDEX IF NOT EXISTS idx_tl_eid  ON timeline_events(cache_key, event_id);
+        CREATE INDEX IF NOT EXISTS idx_pr_key  ON process_events(cache_key);
+        CREATE INDEX IF NOT EXISTS idx_ne_key  ON network_events(cache_key);
+        CREATE INDEX IF NOT EXISTS idx_th_key  ON threat_events(cache_key);
+        CREATE INDEX IF NOT EXISTS idx_th_sev  ON threat_events(cache_key, severity);
+    ''')
+    db.close()
+
+
+def save_analysis(cache_key, analysis):
+    db = get_db()
+
+    summary = {k: v for k, v in analysis.items()
+               if k not in ('timeline', 'process_tree', 'network_summary', 'threats')}
+
+    db.execute(
+        'INSERT OR REPLACE INTO analyses (cache_key, filename, file_size_mb, summary) VALUES (?,?,?,?)',
+        (cache_key, analysis.get('filename', ''),
+         analysis.get('file_size_mb', 0),
+         json.dumps(summary, ensure_ascii=False))
+    )
+
+    th = [(cache_key, t['severity'], t['title'], t['description'],
+           t['detail'], t['timestamp'], t.get('mitre', ''))
+          for t in analysis.get('threats', [])
+          if 'severity' in t]
+    db.executemany(
+        'INSERT INTO threat_events (cache_key,severity,title,description,detail,timestamp,mitre) VALUES (?,?,?,?,?,?,?)', th)
+
+    tl = [(cache_key, t['timestamp'], t['event_id'], t['event_name'],
+           t['label'], t.get('record_id', ''))
+          for t in analysis.get('timeline', [])]
+    db.executemany(
+        'INSERT INTO timeline_events (cache_key,timestamp,event_id,event_name,label,record_id) VALUES (?,?,?,?,?,?)', tl)
+
+    pr = [(cache_key, p['timestamp'], p['image'], p['pid'], p['cmd'],
+           p['parent_image'], p.get('parent_pid', ''), p['user'], p['integrity'])
+          for p in analysis.get('process_tree', [])]
+    db.executemany(
+        'INSERT INTO process_events (cache_key,timestamp,image,pid,cmd,parent_image,parent_pid,user,integrity) VALUES (?,?,?,?,?,?,?,?,?)', pr)
+
+    ne = [(cache_key, n['timestamp'], n['process'], n['src_ip'], n['src_port'],
+           n['dst_ip'], n['dst_port'], n['protocol'], n['initiated'])
+          for n in analysis.get('network_summary', [])]
+    db.executemany(
+        'INSERT INTO network_events (cache_key,timestamp,process,src_ip,src_port,dst_ip,dst_port,protocol,initiated) VALUES (?,?,?,?,?,?,?,?,?)', ne)
+
+    db.commit()
+
+
+def load_summary(cache_key):
+    db = get_db()
+    row = db.execute('SELECT summary FROM analyses WHERE cache_key=?', (cache_key,)).fetchone()
+    if row:
+        return json.loads(row['summary'])
+    return None
+
+
+init_db()
+
+
+# ---------------------------------------------------------------------------
+# EVTX parsing
+# ---------------------------------------------------------------------------
+
 def parse_evtx(filepath):
     parser = PyEvtxParser(filepath)
     events = []
@@ -81,6 +223,10 @@ def parse_evtx(filepath):
     return events
 
 
+# ---------------------------------------------------------------------------
+# Threat detection
+# ---------------------------------------------------------------------------
+
 def detect_threats(events):
     threats = []
 
@@ -89,19 +235,15 @@ def detect_threats(events):
         'mshta.exe', 'regsvr32.exe', 'rundll32.exe', 'certutil.exe',
         'bitsadmin.exe', 'msiexec.exe', 'wmic.exe',
     ]
-
     suspicious_parents = [
         'hfs.exe', 'httpd.exe', 'nginx.exe', 'w3wp.exe',
         'tomcat', 'java.exe', 'node.exe',
     ]
-
     suspicious_paths = [
         '\\temp\\', '\\tmp\\', '\\appdata\\', '\\programdata\\',
         '\\downloads\\', '\\public\\',
     ]
-
     suspicious_extensions = ['.vbs', '.js', '.bat', '.ps1', '.hta', '.wsf', '.scr']
-
     suspicious_ports = [4444, 4445, 5555, 8888, 1234, 31337, 6666, 7777, 9999]
 
     for evt in events:
@@ -114,7 +256,6 @@ def detect_threats(events):
             parent_cmd = (ed.get('ParentCommandLine', '') or '').lower()
             user = ed.get('User', '')
             integrity = ed.get('IntegrityLevel', '')
-
             proc_name = os.path.basename(image)
             parent_name = os.path.basename(parent)
 
@@ -122,7 +263,7 @@ def detect_threats(events):
                 if sp in parent:
                     threats.append({
                         'severity': 'critical',
-                        'title': f'Web Server Spawned Process',
+                        'title': 'Web Server Spawned Process',
                         'description': f'웹 서버 프로세스({parent_name})가 자식 프로세스({proc_name})를 생성했습니다. '
                                        f'웹 쉘이나 원격 코드 실행(RCE) 취약점이 악용되었을 수 있습니다.',
                         'detail': f'부모: {ed.get("ParentImage", "")}\n'
@@ -140,7 +281,6 @@ def detect_threats(events):
                     severity = 'high'
                     if any(p in parent for p in suspicious_parents):
                         severity = 'critical'
-
                     threats.append({
                         'severity': severity,
                         'title': f'Suspicious Process Execution: {proc_name}',
@@ -287,9 +427,12 @@ def detect_threats(events):
 
     severity_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'info': 4}
     unique_threats.sort(key=lambda t: (severity_order.get(t['severity'], 5), t['timestamp']))
-
     return unique_threats
 
+
+# ---------------------------------------------------------------------------
+# Process graph builder
+# ---------------------------------------------------------------------------
 
 def _build_process_graph(process_creates, network_conns, process_terms):
     nodes = {}
@@ -373,23 +516,12 @@ def _build_process_graph(process_creates, network_conns, process_terms):
         if pg not in nodes and pg:
             if pg not in virtual_parents:
                 virtual_parents[pg] = {
-                    'guid': pg,
-                    'parent_guid': '',
-                    'name': node['parent_name'],
-                    'image': node['parent_image'],
-                    'pid': '',
-                    'cmd': '',
-                    'parent_image': '',
-                    'parent_name': '',
-                    'user': '',
-                    'integrity': '',
-                    'timestamp': '',
-                    'children': [],
-                    'network': [],
-                    'terminated': False,
-                    'virtual': True,
-                    'depth': 0,
-                    'children_nodes': [],
+                    'guid': pg, 'parent_guid': '', 'name': node['parent_name'],
+                    'image': node['parent_image'], 'pid': '', 'cmd': '',
+                    'parent_image': '', 'parent_name': '', 'user': '',
+                    'integrity': '', 'timestamp': '', 'children': [],
+                    'network': [], 'terminated': False, 'virtual': True,
+                    'depth': 0, 'children_nodes': [],
                 }
                 img_lower = node['parent_image'].lower()
                 if img_lower in net_by_image:
@@ -410,7 +542,6 @@ def _build_process_graph(process_creates, network_conns, process_terms):
             final_trees.append(vp)
             for c in vp['children_nodes']:
                 used_roots.add(c['guid'])
-
     for t in trees:
         if t['guid'] not in used_roots:
             final_trees.append(t)
@@ -418,6 +549,10 @@ def _build_process_graph(process_creates, network_conns, process_terms):
     final_trees.sort(key=lambda t: t.get('timestamp', '') or 'z')
     return final_trees
 
+
+# ---------------------------------------------------------------------------
+# Build analysis dict
+# ---------------------------------------------------------------------------
 
 def build_analysis(events):
     total = len(events)
@@ -497,8 +632,15 @@ def build_analysis(events):
         })
 
     threats = detect_threats(events)
-
     proc_graph = _build_process_graph(process_creates, network_conns, process_terms)
+
+    time_groups = {}
+    for item in timeline_data:
+        minute = item['timestamp'][:16]
+        if minute not in time_groups:
+            time_groups[minute] = {}
+        eid_str = str(item['event_id'])
+        time_groups[minute][eid_str] = time_groups[minute].get(eid_str, 0) + 1
 
     return {
         'total_events': total,
@@ -521,14 +663,28 @@ def build_analysis(events):
         },
         'drivers_loaded': len(drivers),
         'proc_graph': proc_graph,
+        'time_groups': time_groups,
+        'process_count': len(process_tree),
+        'network_count': len(network_summary),
+        'timeline_count': len(timeline_data),
+        'threat_count': len(threats),
     }
 
 
+# ---------------------------------------------------------------------------
+# Error handlers
+# ---------------------------------------------------------------------------
+
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    return render_template('index.html',
-                           error=f'파일 크기가 {MAX_UPLOAD_MB}MB 제한을 초과했습니다. 더 작은 파일을 업로드해 주세요.'), 413
+    return render_template(
+        'index.html',
+        error=f'파일 크기가 {MAX_UPLOAD_MB}MB 제한을 초과했습니다. 더 작은 파일을 업로드해 주세요.'), 413
 
+
+# ---------------------------------------------------------------------------
+# Page routes
+# ---------------------------------------------------------------------------
 
 @app.route('/')
 def index():
@@ -553,9 +709,12 @@ def analyze():
         analysis = build_analysis(events)
         analysis['filename'] = file.filename
         analysis['file_size_mb'] = round(file_size_mb, 1)
+
         cache_key = os.urandom(8).hex()
-        _analysis_cache[cache_key] = analysis
-        return render_template('result.html', analysis=analysis, cache_key=cache_key)
+        save_analysis(cache_key, analysis)
+
+        summary = _make_summary(analysis)
+        return render_template('result.html', analysis=summary, cache_key=cache_key)
     finally:
         if os.path.exists(filepath):
             os.remove(filepath)
@@ -572,23 +731,118 @@ def analyze_default():
     analysis = build_analysis(events)
     analysis['filename'] = '01_sysmon_quiz.evtx'
     analysis['file_size_mb'] = round(file_size_mb, 1)
+
     cache_key = os.urandom(8).hex()
-    _analysis_cache[cache_key] = analysis
-    return render_template('result.html', analysis=analysis, cache_key=cache_key)
+    save_analysis(cache_key, analysis)
+
+    summary = _make_summary(analysis)
+    return render_template('result.html', analysis=summary, cache_key=cache_key)
+
+
+def _make_summary(analysis):
+    """Strip large lists, keep only lightweight summary for template rendering."""
+    summary = {k: v for k, v in analysis.items()
+               if k not in ('timeline', 'process_tree', 'network_summary', 'threats')}
+    return summary
 
 
 @app.route('/download_report/<cache_key>')
 def download_report(cache_key):
-    analysis = _analysis_cache.get(cache_key)
-    if not analysis:
+    summary = load_summary(cache_key)
+    if not summary:
         return redirect(url_for('index'))
 
-    html = render_template('report_download.html', analysis=analysis)
+    db = get_db()
+    summary['timeline'] = [dict(r) for r in
+        db.execute('SELECT * FROM timeline_events WHERE cache_key=? ORDER BY id', (cache_key,)).fetchall()]
+    summary['process_tree'] = [dict(r) for r in
+        db.execute('SELECT * FROM process_events WHERE cache_key=? ORDER BY id', (cache_key,)).fetchall()]
+    summary['network_summary'] = [dict(r) for r in
+        db.execute('SELECT * FROM network_events WHERE cache_key=? ORDER BY id', (cache_key,)).fetchall()]
+    summary['threats'] = [dict(r) for r in
+        db.execute('SELECT severity,title,description,detail,timestamp,mitre FROM threat_events WHERE cache_key=? ORDER BY id', (cache_key,)).fetchall()]
+
+    html = render_template('report_download.html', analysis=summary)
     response = make_response(html)
     response.headers['Content-Type'] = 'text/html; charset=utf-8'
     response.headers['Content-Disposition'] = 'attachment; filename=sysmon_analysis_report.html'
     return response
 
+
+# ---------------------------------------------------------------------------
+# REST API – server-side pagination
+# ---------------------------------------------------------------------------
+
+def _paginate(query_base, count_base, params, page, size):
+    size = min(max(size, 10), 500)
+    offset = (page - 1) * size
+    db = get_db()
+    total = db.execute(count_base, params).fetchone()[0]
+    rows = db.execute(f'{query_base} LIMIT ? OFFSET ?', params + (size, offset)).fetchall()
+    return {
+        'items': [dict(r) for r in rows],
+        'total': total,
+        'page': page,
+        'pages': math.ceil(total / size) if total else 1,
+        'size': size,
+    }
+
+
+@app.route('/api/<cache_key>/timeline')
+def api_timeline(cache_key):
+    page = request.args.get('page', 1, type=int)
+    size = request.args.get('size', 50, type=int)
+    event_id = request.args.get('event_id', '', type=str)
+
+    if event_id:
+        return jsonify(_paginate(
+            'SELECT timestamp,event_id,event_name,label,record_id FROM timeline_events WHERE cache_key=? AND event_id=? ORDER BY id',
+            'SELECT COUNT(*) FROM timeline_events WHERE cache_key=? AND event_id=?',
+            (cache_key, int(event_id)), page, size))
+    return jsonify(_paginate(
+        'SELECT timestamp,event_id,event_name,label,record_id FROM timeline_events WHERE cache_key=? ORDER BY id',
+        'SELECT COUNT(*) FROM timeline_events WHERE cache_key=?',
+        (cache_key,), page, size))
+
+
+@app.route('/api/<cache_key>/processes')
+def api_processes(cache_key):
+    page = request.args.get('page', 1, type=int)
+    size = request.args.get('size', 50, type=int)
+    return jsonify(_paginate(
+        'SELECT timestamp,image,pid,cmd,parent_image,parent_pid,user,integrity FROM process_events WHERE cache_key=? ORDER BY id',
+        'SELECT COUNT(*) FROM process_events WHERE cache_key=?',
+        (cache_key,), page, size))
+
+
+@app.route('/api/<cache_key>/network')
+def api_network(cache_key):
+    page = request.args.get('page', 1, type=int)
+    size = request.args.get('size', 50, type=int)
+    return jsonify(_paginate(
+        'SELECT timestamp,process,src_ip,src_port,dst_ip,dst_port,protocol,initiated FROM network_events WHERE cache_key=? ORDER BY id',
+        'SELECT COUNT(*) FROM network_events WHERE cache_key=?',
+        (cache_key,), page, size))
+
+
+@app.route('/api/<cache_key>/threats')
+def api_threats(cache_key):
+    page = request.args.get('page', 1, type=int)
+    size = request.args.get('size', 50, type=int)
+    severity = request.args.get('severity', '', type=str)
+
+    if severity:
+        return jsonify(_paginate(
+            'SELECT severity,title,description,detail,timestamp,mitre FROM threat_events WHERE cache_key=? AND severity=? ORDER BY id',
+            'SELECT COUNT(*) FROM threat_events WHERE cache_key=? AND severity=?',
+            (cache_key, severity), page, size))
+    return jsonify(_paginate(
+        'SELECT severity,title,description,detail,timestamp,mitre FROM threat_events WHERE cache_key=? ORDER BY id',
+        'SELECT COUNT(*) FROM threat_events WHERE cache_key=?',
+        (cache_key,), page, size))
+
+
+# ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

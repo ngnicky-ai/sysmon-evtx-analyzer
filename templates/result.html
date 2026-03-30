@@ -22,17 +22,14 @@
             background: var(--bg2);
             border-bottom: 1px solid var(--border);
             padding: 1rem 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            display: flex; align-items: center; justify-content: space-between;
             position: sticky; top: 0; z-index: 100;
             backdrop-filter: blur(10px);
         }
         .topbar h1 {
             font-size: 1.2rem;
             background: linear-gradient(135deg, #60a5fa, #a78bfa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
         .topbar-actions { display: flex; gap: 0.75rem; align-items: center; }
         .btn {
@@ -57,8 +54,7 @@
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            gap: 1rem; margin-bottom: 1.5rem;
         }
         .stat-card {
             background: var(--bg2); border: 1px solid var(--border);
@@ -76,8 +72,7 @@
             border-radius: 0.75rem; margin-bottom: 1.5rem; overflow: hidden;
         }
         .section-header {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
             display: flex; align-items: center; justify-content: space-between;
             cursor: pointer; user-select: none;
         }
@@ -107,8 +102,7 @@
             height: 100%; border-radius: 4px;
             display: flex; align-items: center; padding-left: 8px;
             font-size: 0.75rem; color: white; font-weight: 600;
-            transition: width 0.6s ease;
-            min-width: 28px;
+            transition: width 0.6s ease; min-width: 28px;
         }
         .chart-bar-fill.eid-1 { background: linear-gradient(90deg, #ef4444, #f87171); }
         .chart-bar-fill.eid-3 { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
@@ -149,26 +143,14 @@
         .time-col .bar-seg.eid-6 { background: #10b981; }
         .time-col .col-label {
             font-size: 0.55rem; color: var(--text3); writing-mode: vertical-rl;
-            text-orientation: mixed; margin-top: 4px; max-height: 50px;
-            overflow: hidden;
+            text-orientation: mixed; margin-top: 4px; max-height: 50px; overflow: hidden;
         }
         .time-col:hover .bar-seg { opacity: 0.8; }
-        .time-col-tip {
-            display: none; position: absolute; background: var(--bg3);
-            padding: 0.4rem 0.6rem; border-radius: 0.3rem; font-size: 0.72rem;
-            color: var(--text); pointer-events: none; z-index: 10; white-space: nowrap;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
 
-        /* Threat cards */
         .threat-list { display: flex; flex-direction: column; gap: 0.75rem; }
         .threat-card {
-            border-radius: 0.5rem;
-            padding: 1rem 1.25rem;
-            border-left: 4px solid;
-            background: rgba(15, 23, 42, 0.5);
-            cursor: pointer;
-            transition: background 0.2s;
+            border-radius: 0.5rem; padding: 1rem 1.25rem; border-left: 4px solid;
+            background: rgba(15, 23, 42, 0.5); cursor: pointer; transition: background 0.2s;
         }
         .threat-card:hover { background: rgba(15, 23, 42, 0.8); }
         .threat-card.critical { border-color: #dc2626; }
@@ -176,7 +158,6 @@
         .threat-card.medium { border-color: #d97706; }
         .threat-card.low { border-color: #2563eb; }
         .threat-card.info { border-color: #6b7280; }
-
         .threat-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.4rem; }
         .severity-badge {
             font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
@@ -187,7 +168,6 @@
         .severity-badge.high { background: #ea580c; }
         .severity-badge.medium { background: #d97706; }
         .severity-badge.low { background: #2563eb; }
-
         .threat-title { font-weight: 600; font-size: 0.95rem; }
         .threat-desc { font-size: 0.85rem; color: var(--text2); margin-bottom: 0.5rem; }
         .threat-meta { font-size: 0.75rem; color: var(--text3); display: flex; gap: 1rem; flex-wrap: wrap; }
@@ -195,86 +175,48 @@
             margin-top: 0.75rem; padding: 0.75rem;
             background: rgba(0,0,0,0.3); border-radius: 0.4rem;
             font-family: 'Consolas', monospace; font-size: 0.8rem;
-            white-space: pre-wrap; color: var(--text2);
-            display: none;
+            white-space: pre-wrap; color: var(--text2); display: none;
         }
         .threat-card.expanded .threat-detail { display: block; }
 
-        /* Timeline */
-        .timeline-container {
-            position: relative;
-            overflow-x: auto;
-            padding: 1rem 0;
-        }
-        .timeline-track {
-            position: relative;
-            min-height: 500px;
-            padding-left: 180px;
-        }
+        .timeline-container { position: relative; overflow-x: auto; padding: 1rem 0; }
+        .timeline-track { position: relative; min-height: 200px; padding-left: 180px; }
         .timeline-line {
-            position: absolute;
-            left: 170px;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: linear-gradient(to bottom, var(--blue), var(--purple), var(--cyan));
+            position: absolute; left: 170px; top: 0; bottom: 0;
+            width: 2px; background: linear-gradient(to bottom, var(--blue), var(--purple), var(--cyan));
         }
         .timeline-event {
-            position: relative;
-            padding: 0.6rem 0 0.6rem 2rem;
-            min-height: 40px;
-            display: flex;
-            align-items: flex-start;
+            position: relative; padding: 0.6rem 0 0.6rem 2rem;
+            min-height: 40px; display: flex; align-items: flex-start;
         }
         .timeline-time {
-            position: absolute;
-            left: -170px;
-            width: 160px;
-            text-align: right;
-            font-size: 0.72rem;
-            color: var(--text3);
-            font-family: 'Consolas', monospace;
+            position: absolute; left: -170px; width: 160px; text-align: right;
+            font-size: 0.72rem; color: var(--text3); font-family: 'Consolas', monospace;
             padding-top: 0.2rem;
         }
         .timeline-dot {
-            position: absolute;
-            left: -5px;
-            top: 0.75rem;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            border: 2px solid var(--bg);
-            z-index: 1;
+            position: absolute; left: -5px; top: 0.75rem;
+            width: 12px; height: 12px; border-radius: 50%;
+            border: 2px solid var(--bg); z-index: 1;
         }
         .timeline-dot.eid-1 { background: var(--red); }
         .timeline-dot.eid-3 { background: var(--cyan); }
         .timeline-dot.eid-5 { background: var(--text3); }
         .timeline-dot.eid-6 { background: var(--green); }
         .timeline-content {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border);
-            border-radius: 0.4rem;
-            padding: 0.5rem 0.75rem;
-            flex: 1;
-            font-size: 0.82rem;
+            background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border);
+            border-radius: 0.4rem; padding: 0.5rem 0.75rem; flex: 1; font-size: 0.82rem;
         }
         .timeline-content .eid-tag {
-            font-size: 0.65rem;
-            font-weight: 700;
-            padding: 0.1rem 0.4rem;
-            border-radius: 0.2rem;
-            margin-right: 0.5rem;
-            display: inline-block;
+            font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.4rem;
+            border-radius: 0.2rem; margin-right: 0.5rem; display: inline-block;
         }
         .eid-tag.eid-1 { background: rgba(239,68,68,0.2); color: #fca5a5; }
         .eid-tag.eid-3 { background: rgba(6,182,212,0.2); color: #67e8f9; }
         .eid-tag.eid-5 { background: rgba(100,116,139,0.2); color: #94a3b8; }
         .eid-tag.eid-6 { background: rgba(16,185,129,0.2); color: #6ee7b7; }
 
-        /* Tables */
-        .data-table {
-            width: 100%; border-collapse: collapse; font-size: 0.82rem;
-        }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
         .data-table th {
             text-align: left; padding: 0.6rem 0.75rem;
             background: rgba(15,23,42,0.5); color: var(--text2);
@@ -285,24 +227,15 @@
         .data-table td {
             padding: 0.5rem 0.75rem;
             border-bottom: 1px solid rgba(148,163,184,0.05);
-            color: var(--text2);
-            max-width: 400px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            color: var(--text2); max-width: 400px; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
         }
         .data-table tr:hover td { background: rgba(59,130,246,0.03); }
-
-        .tag {
-            display: inline-block; padding: 0.1rem 0.4rem;
-            border-radius: 0.2rem; font-size: 0.72rem; font-weight: 600;
-        }
+        .tag { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 0.2rem; font-size: 0.72rem; font-weight: 600; }
         .tag-high { background: rgba(239,68,68,0.15); color: #fca5a5; }
         .tag-system { background: rgba(139,92,246,0.15); color: #c4b5fd; }
 
-        .filter-bar {
-            display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;
-        }
+        .filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
         .filter-btn {
             padding: 0.3rem 0.75rem; border-radius: 0.35rem;
             border: 1px solid var(--border); background: transparent;
@@ -312,162 +245,112 @@
         .filter-btn:hover, .filter-btn.active {
             background: rgba(59,130,246,0.1); border-color: var(--blue); color: var(--blue);
         }
-
         .empty-state { text-align: center; padding: 2rem; color: var(--text3); }
+
+        .pager {
+            display: flex; align-items: center; justify-content: center;
+            gap: 0.4rem; margin-top: 1rem; flex-wrap: wrap;
+        }
+        .pager-info { color: var(--text3); font-size: 0.75rem; margin-right: auto; }
+        .pager-btn {
+            min-width: 32px; height: 32px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border: 1px solid var(--border); border-radius: 0.35rem;
+            background: transparent; color: var(--text2);
+            font-size: 0.78rem; cursor: pointer; transition: all 0.15s;
+            padding: 0 0.4rem;
+        }
+        .pager-btn:hover { background: rgba(59,130,246,0.1); border-color: var(--blue); color: var(--blue); }
+        .pager-btn.active { background: var(--blue); border-color: var(--blue); color: white; }
+        .pager-btn:disabled { opacity: 0.3; cursor: default; }
+        .pager-size {
+            display: flex; align-items: center; gap: 0.4rem;
+            margin-left: auto; font-size: 0.75rem; color: var(--text3);
+        }
+        .pager-size select {
+            background: var(--bg); border: 1px solid var(--border);
+            color: var(--text2); border-radius: 0.3rem;
+            padding: 0.2rem 0.4rem; font-size: 0.75rem; cursor: pointer;
+        }
+
+        .ajax-loading {
+            text-align: center; padding: 2rem; color: var(--text3);
+        }
+        .ajax-loading .spinner {
+            display: inline-block; width: 24px; height: 24px;
+            border: 3px solid var(--border); border-top-color: var(--blue);
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem; vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Process Tree */
         .ptree-wrapper { overflow-x: auto; padding: 1rem 0; }
-        .ptree-node {
-            position: relative;
-            margin-left: 2rem;
-        }
+        .ptree-node { position: relative; margin-left: 2rem; }
         .ptree-node.root { margin-left: 0; }
         .ptree-node::before {
-            content: '';
-            position: absolute;
-            left: -1.5rem;
-            top: 0;
-            width: 1.5rem;
-            height: 1.2rem;
+            content: ''; position: absolute; left: -1.5rem; top: 0;
+            width: 1.5rem; height: 1.2rem;
             border-left: 2px solid rgba(148,163,184,0.2);
             border-bottom: 2px solid rgba(148,163,184,0.2);
             border-radius: 0 0 0 6px;
         }
         .ptree-node.root::before { display: none; }
         .ptree-node:last-child::after {
-            content: '';
-            position: absolute;
-            left: -1.5rem;
-            top: 1.2rem;
-            bottom: 0;
-            width: 2px;
-            background: var(--bg2);
+            content: ''; position: absolute; left: -1.5rem; top: 1.2rem;
+            bottom: 0; width: 2px; background: var(--bg2);
         }
-        .ptree-children {
-            position: relative;
-            border-left: 2px solid rgba(148,163,184,0.2);
-            margin-left: 0.5rem;
-            padding-left: 0;
-        }
+        .ptree-children { position: relative; border-left: 2px solid rgba(148,163,184,0.2); margin-left: 0.5rem; }
         .ptree-card {
-            display: inline-flex;
-            flex-direction: column;
-            background: var(--bg3);
-            border: 1px solid var(--border);
-            border-radius: 0.5rem;
-            padding: 0.6rem 0.9rem;
-            margin-bottom: 0.5rem;
-            min-width: 200px;
-            max-width: 480px;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
+            display: inline-flex; flex-direction: column;
+            background: var(--bg3); border: 1px solid var(--border);
+            border-radius: 0.5rem; padding: 0.6rem 0.9rem;
+            margin-bottom: 0.5rem; min-width: 200px; max-width: 480px;
+            cursor: pointer; transition: all 0.2s; position: relative;
         }
-        .ptree-card:hover {
-            border-color: var(--blue);
-            box-shadow: 0 0 12px rgba(59,130,246,0.15);
-        }
-        .ptree-card.virtual {
-            border-style: dashed;
-            opacity: 0.7;
-        }
-        .ptree-card.suspicious {
-            border-color: rgba(239,68,68,0.4);
-            background: rgba(239,68,68,0.05);
-        }
-        .ptree-card-header {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.3rem;
-        }
+        .ptree-card:hover { border-color: var(--blue); box-shadow: 0 0 12px rgba(59,130,246,0.15); }
+        .ptree-card.virtual { border-style: dashed; opacity: 0.7; }
+        .ptree-card.suspicious { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.05); }
+        .ptree-card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; }
         .ptree-icon {
-            width: 28px; height: 28px;
-            border-radius: 6px;
+            width: 28px; height: 28px; border-radius: 6px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 0.85rem;
-            flex-shrink: 0;
+            font-size: 0.85rem; flex-shrink: 0;
         }
         .ptree-icon.proc { background: rgba(59,130,246,0.15); }
         .ptree-icon.net { background: rgba(6,182,212,0.15); }
         .ptree-icon.mal { background: rgba(239,68,68,0.15); }
-        .ptree-proc-name {
-            font-weight: 700;
-            font-size: 0.88rem;
-            color: var(--text);
-            word-break: break-all;
-        }
-        .ptree-pid {
-            font-size: 0.68rem;
-            color: var(--text3);
-            font-family: 'Consolas', monospace;
-        }
-        .ptree-meta {
-            font-size: 0.72rem;
-            color: var(--text3);
-            margin-top: 0.15rem;
-        }
+        .ptree-proc-name { font-weight: 700; font-size: 0.88rem; color: var(--text); word-break: break-all; }
+        .ptree-pid { font-size: 0.68rem; color: var(--text3); font-family: 'Consolas', monospace; }
+        .ptree-meta { font-size: 0.72rem; color: var(--text3); margin-top: 0.15rem; }
         .ptree-detail {
-            display: none;
-            margin-top: 0.5rem;
-            padding: 0.5rem;
-            background: rgba(0,0,0,0.25);
-            border-radius: 0.35rem;
-            font-size: 0.75rem;
-            font-family: 'Consolas', monospace;
-            color: var(--text2);
-            white-space: pre-wrap;
-            word-break: break-all;
+            display: none; margin-top: 0.5rem; padding: 0.5rem;
+            background: rgba(0,0,0,0.25); border-radius: 0.35rem;
+            font-size: 0.75rem; font-family: 'Consolas', monospace;
+            color: var(--text2); white-space: pre-wrap; word-break: break-all;
         }
         .ptree-card.expanded .ptree-detail { display: block; }
-        .ptree-net-list {
-            margin-top: 0.4rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
-        }
+        .ptree-net-list { margin-top: 0.4rem; display: flex; flex-direction: column; gap: 0.3rem; }
         .ptree-net-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            background: rgba(6,182,212,0.08);
-            border: 1px solid rgba(6,182,212,0.2);
-            border-radius: 0.35rem;
-            padding: 0.3rem 0.5rem;
-            font-size: 0.72rem;
-            font-family: 'Consolas', monospace;
-            color: #67e8f9;
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.2);
+            border-radius: 0.35rem; padding: 0.3rem 0.5rem;
+            font-size: 0.72rem; font-family: 'Consolas', monospace; color: #67e8f9;
         }
-        .ptree-net-badge.suspicious-port {
-            background: rgba(239,68,68,0.08);
-            border-color: rgba(239,68,68,0.3);
-            color: #fca5a5;
-        }
+        .ptree-net-badge.suspicious-port { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.3); color: #fca5a5; }
         .ptree-arrow { color: var(--text3); }
         .ptree-group {
-            background: var(--bg2);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
-            padding: 1.25rem;
-            margin-bottom: 1rem;
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1rem;
         }
         .ptree-group-label {
-            font-size: 0.72rem;
-            color: var(--text3);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.75rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            font-size: 0.72rem; color: var(--text3); text-transform: uppercase;
+            letter-spacing: 0.05em; margin-bottom: 0.75rem;
+            display: flex; align-items: center; gap: 0.5rem;
         }
         .ptree-group-label .chain-tag {
-            font-size: 0.6rem;
-            padding: 0.1rem 0.4rem;
-            border-radius: 0.2rem;
-            background: rgba(239,68,68,0.15);
-            color: #fca5a5;
-            font-weight: 600;
+            font-size: 0.6rem; padding: 0.1rem 0.4rem; border-radius: 0.2rem;
+            background: rgba(239,68,68,0.15); color: #fca5a5; font-weight: 600;
         }
     </style>
 </head>
@@ -480,7 +363,7 @@
         </div>
     </div>
 
-    <div class="main" id="reportContent">
+    <div class="main">
         <!-- Stats Overview -->
         <div class="stats-grid">
             <div class="stat-card info">
@@ -490,7 +373,7 @@
             </div>
             <div class="stat-card {% if analysis.threat_summary.critical > 0 %}critical{% elif analysis.threat_summary.high > 0 %}high{% else %}info{% endif %}">
                 <div class="label">탐지된 위협</div>
-                <div class="value">{{ analysis.threats|length }}</div>
+                <div class="value">{{ analysis.threat_count }}</div>
                 <div class="sub">
                     {% if analysis.threat_summary.critical > 0 %}Critical: {{ analysis.threat_summary.critical }}{% endif %}
                     {% if analysis.threat_summary.high > 0 %} High: {{ analysis.threat_summary.high }}{% endif %}
@@ -508,42 +391,28 @@
             </div>
         </div>
 
-        <!-- Threat Detection -->
+        <!-- Threat Detection (AJAX) -->
         <div class="section">
             <div class="section-header" onclick="toggleSection(this)">
-                <h2>🚨 보안 위협 탐지 결과 ({{ analysis.threats|length }}건)</h2>
+                <h2>🚨 보안 위협 탐지 결과 ({{ analysis.threat_count }}건)</h2>
                 <span class="toggle">접기/펼치기</span>
             </div>
             <div class="section-body">
-                {% if analysis.threats %}
-                <div class="filter-bar">
-                    <button class="filter-btn active" onclick="filterThreats('all', this)">전체 ({{ analysis.threats|length }})</button>
+                {% if analysis.threat_count > 0 %}
+                <div class="filter-bar" id="threatFilterBar">
+                    <button class="filter-btn active" onclick="threatFilter('', this)">전체 ({{ analysis.threat_count }})</button>
                     {% if analysis.threat_summary.critical > 0 %}
-                    <button class="filter-btn" onclick="filterThreats('critical', this)">🔴 Critical ({{ analysis.threat_summary.critical }})</button>
+                    <button class="filter-btn" onclick="threatFilter('critical', this)">🔴 Critical ({{ analysis.threat_summary.critical }})</button>
                     {% endif %}
                     {% if analysis.threat_summary.high > 0 %}
-                    <button class="filter-btn" onclick="filterThreats('high', this)">🟠 High ({{ analysis.threat_summary.high }})</button>
+                    <button class="filter-btn" onclick="threatFilter('high', this)">🟠 High ({{ analysis.threat_summary.high }})</button>
                     {% endif %}
                     {% if analysis.threat_summary.medium > 0 %}
-                    <button class="filter-btn" onclick="filterThreats('medium', this)">🟡 Medium ({{ analysis.threat_summary.medium }})</button>
+                    <button class="filter-btn" onclick="threatFilter('medium', this)">🟡 Medium ({{ analysis.threat_summary.medium }})</button>
                     {% endif %}
                 </div>
-                <div class="threat-list" id="threatList">
-                    {% for threat in analysis.threats %}
-                    <div class="threat-card {{ threat.severity }}" data-severity="{{ threat.severity }}" onclick="this.classList.toggle('expanded')">
-                        <div class="threat-header">
-                            <span class="severity-badge {{ threat.severity }}">{{ threat.severity }}</span>
-                            <span class="threat-title">{{ threat.title }}</span>
-                        </div>
-                        <div class="threat-desc">{{ threat.description }}</div>
-                        <div class="threat-meta">
-                            <span>⏰ {{ threat.timestamp[:19] }}</span>
-                            <span>🎯 {{ threat.mitre }}</span>
-                        </div>
-                        <div class="threat-detail">{{ threat.detail }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
+                <div class="threat-list" id="threatList"></div>
+                <div class="pager" id="threatPager"></div>
                 {% else %}
                 <div class="empty-state">위협이 탐지되지 않았습니다.</div>
                 {% endif %}
@@ -618,11 +487,6 @@ Network Connections ({{ node.network|length }}):{% for conn in node.network %}
                         🔗 Process Chain: {{ tree.name or 'Unknown' }}
                         {% set total_children = tree.children_nodes|length %}
                         {% if total_children > 0 %}→ {{ total_children }} child{{ 's' if total_children > 1 else '' }}{% endif %}
-                        {% set has_net = tree.network|length > 0 %}
-                        {% for cn in tree.children_nodes recursive %}
-                            {% if cn.network %}{% set has_net = True %}{% endif %}
-                            {% if cn.children_nodes %}{{ loop(cn.children_nodes) }}{% endif %}
-                        {% endfor %}
                         {% if tree.name|lower in ['hfs.exe','httpd.exe'] or tree.children_nodes|selectattr('name','equalto','wscript.exe')|list %}
                         <span class="chain-tag">ATTACK CHAIN</span>
                         {% endif %}
@@ -685,18 +549,7 @@ Network Connections ({{ node.network|length }}):{% for conn in node.network %}
                 </div>
                 <div class="section-body">
                     <div class="chart-container" style="position:relative;">
-                        {% set time_groups = {} %}
-                        {% for item in analysis.timeline %}
-                            {% set minute = item.timestamp[:16] %}
-                            {% if minute not in time_groups %}
-                                {% set _ = time_groups.update({minute: {}}) %}
-                            {% endif %}
-                            {% set eid_str = item.event_id|string %}
-                            {% if eid_str not in time_groups[minute] %}
-                                {% set _ = time_groups[minute].update({eid_str: 0}) %}
-                            {% endif %}
-                            {% set _ = time_groups[minute].update({eid_str: time_groups[minute][eid_str] + 1}) %}
-                        {% endfor %}
+                        {% set time_groups = analysis.time_groups %}
                         {% set all_totals = [] %}
                         {% for min_key in time_groups|sort %}
                             {% set total = time_groups[min_key].values()|sum %}
@@ -728,43 +581,33 @@ Network Connections ({{ node.network|length }}):{% for conn in node.network %}
             </div>
         </div>
 
-        <!-- Timeline -->
+        <!-- Timeline (AJAX) -->
         <div class="section">
             <div class="section-header" onclick="toggleSection(this)">
-                <h2>🕐 이벤트 타임라인</h2>
+                <h2>🕐 이벤트 타임라인 ({{ analysis.timeline_count }}건)</h2>
                 <span class="toggle">접기/펼치기</span>
             </div>
             <div class="section-body">
-                <div class="filter-bar">
-                    <button class="filter-btn active" onclick="filterTimeline('all', this)">전체</button>
-                    <button class="filter-btn" onclick="filterTimeline('1', this)">🔴 Process Create</button>
-                    <button class="filter-btn" onclick="filterTimeline('3', this)">🔵 Network</button>
-                    <button class="filter-btn" onclick="filterTimeline('5', this)">⚫ Terminated</button>
-                    <button class="filter-btn" onclick="filterTimeline('6', this)">🟢 Driver</button>
+                <div class="filter-bar" id="tlFilterBar">
+                    <button class="filter-btn active" onclick="tlFilter('', this)">전체</button>
+                    <button class="filter-btn" onclick="tlFilter('1', this)">🔴 Process Create</button>
+                    <button class="filter-btn" onclick="tlFilter('3', this)">🔵 Network</button>
+                    <button class="filter-btn" onclick="tlFilter('5', this)">⚫ Terminated</button>
+                    <button class="filter-btn" onclick="tlFilter('6', this)">🟢 Driver</button>
                 </div>
                 <div class="timeline-container">
-                    <div class="timeline-track">
+                    <div class="timeline-track" id="timelineTrack">
                         <div class="timeline-line"></div>
-                        {% for item in analysis.timeline %}
-                        <div class="timeline-event" data-eid="{{ item.event_id }}">
-                            <div class="timeline-time">{{ item.timestamp[11:19] if item.timestamp|length > 19 else item.timestamp }}</div>
-                            <div class="timeline-dot eid-{{ item.event_id }}"></div>
-                            <div class="timeline-content">
-                                <span class="eid-tag eid-{{ item.event_id }}">{{ item.event_name }}</span>
-                                {{ item.label }}
-                            </div>
-                        </div>
-                        {% endfor %}
                     </div>
                 </div>
+                <div class="pager" id="tlPager"></div>
             </div>
         </div>
 
-        <!-- Process Creation -->
-        {% if analysis.process_tree %}
+        <!-- Process Creation (AJAX) -->
         <div class="section">
             <div class="section-header" onclick="toggleSection(this)">
-                <h2>⚙️ 프로세스 생성 이벤트 ({{ analysis.process_tree|length }}건)</h2>
+                <h2>⚙️ 프로세스 생성 이벤트 ({{ analysis.process_count }}건)</h2>
                 <span class="toggle">접기/펼치기</span>
             </div>
             <div class="section-body">
@@ -780,35 +623,17 @@ Network Connections ({{ node.network|length }}):{% for conn in node.network %}
                             <th>권한</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for p in analysis.process_tree %}
-                        <tr>
-                            <td style="white-space:nowrap;font-family:Consolas,monospace;font-size:0.75rem;">{{ p.timestamp[:19] }}</td>
-                            <td title="{{ p.image }}">{{ p.image.split('\\')[-1] }}</td>
-                            <td title="{{ p.cmd }}">{{ p.cmd[:80] }}{% if p.cmd|length > 80 %}...{% endif %}</td>
-                            <td title="{{ p.parent_image }}">{{ p.parent_image.split('\\')[-1] }}</td>
-                            <td>{{ p.user }}</td>
-                            <td>
-                                {% if p.integrity == 'High' or p.integrity == 'System' %}
-                                <span class="tag tag-high">{{ p.integrity }}</span>
-                                {% else %}
-                                {{ p.integrity }}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
+                    <tbody id="procBody"></tbody>
                 </table>
                 </div>
+                <div class="pager" id="procPager"></div>
             </div>
         </div>
-        {% endif %}
 
-        <!-- Network Connections -->
-        {% if analysis.network_summary %}
+        <!-- Network Connections (AJAX) -->
         <div class="section">
             <div class="section-header" onclick="toggleSection(this)">
-                <h2>🌐 네트워크 연결 이벤트 ({{ analysis.network_summary|length }}건)</h2>
+                <h2>🌐 네트워크 연결 이벤트 ({{ analysis.network_count }}건)</h2>
                 <span class="toggle">접기/펼치기</span>
             </div>
             <div class="section-body">
@@ -824,23 +649,12 @@ Network Connections ({{ node.network|length }}):{% for conn in node.network %}
                             <th>Initiated</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for n in analysis.network_summary %}
-                        <tr>
-                            <td style="white-space:nowrap;font-family:Consolas,monospace;font-size:0.75rem;">{{ n.timestamp[:19] }}</td>
-                            <td title="{{ n.process }}">{{ n.process.split('\\')[-1] }}</td>
-                            <td>{{ n.src_ip }}:{{ n.src_port }}</td>
-                            <td>{{ n.dst_ip }}:{{ n.dst_port }}</td>
-                            <td>{{ n.protocol }}</td>
-                            <td>{{ n.initiated }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
+                    <tbody id="netBody"></tbody>
                 </table>
                 </div>
+                <div class="pager" id="netPager"></div>
             </div>
         </div>
-        {% endif %}
 
         <!-- IP Statistics & Severity -->
         <div class="grid-2">
@@ -872,7 +686,7 @@ Network Connections ({{ node.network|length }}):{% for conn in node.network %}
                 <div class="section-body">
                     {% set sev_names = {'critical': 'Critical', 'high': 'High', 'medium': 'Medium', 'low': 'Low', 'info': 'Info'} %}
                     {% set sev_colors = {'critical': '#dc2626', 'high': '#ea580c', 'medium': '#d97706', 'low': '#2563eb', 'info': '#6b7280'} %}
-                    {% set total_threats = analysis.threats|length %}
+                    {% set total_threats = analysis.threat_count %}
                     <div class="donut-container">
                         <div class="donut-wrapper">
                             <svg viewBox="0 0 100 100">
@@ -916,31 +730,187 @@ Network Connections ({{ node.network|length }}):{% for conn in node.network %}
     </div>
 
     <script>
-        // Section toggle
+        const CACHE_KEY = '{{ cache_key }}';
+        const API_BASE = '/api/' + CACHE_KEY;
+
         function toggleSection(header) {
-            const body = header.nextElementSibling;
-            body.classList.toggle('collapsed');
+            header.nextElementSibling.classList.toggle('collapsed');
         }
 
-        // Threat filter
-        function filterThreats(severity, btn) {
-            document.querySelectorAll('.filter-bar .filter-btn').forEach(b => b.classList.remove('active'));
-            if (btn) btn.classList.add('active');
-            document.querySelectorAll('.threat-card').forEach(card => {
-                card.style.display = (severity === 'all' || card.dataset.severity === severity) ? '' : 'none';
-            });
-        }
-
-        // Timeline filter
-        function filterTimeline(eid, btn) {
-            const bar = btn.parentElement;
-            bar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        // ---- Threats (AJAX) ----
+        let threatSeverity = '';
+        let currentThreatSize = 50;
+        function threatFilter(sev, btn) {
+            btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            document.querySelectorAll('.timeline-event').forEach(el => {
-                el.style.display = (eid === 'all' || el.dataset.eid === eid) ? '' : 'none';
+            threatSeverity = sev;
+            loadThreats(1, currentThreatSize);
+        }
+        function loadThreats(page, size) {
+            currentThreatSize = size;
+            const list = document.getElementById('threatList');
+            if (!list) return;
+            list.innerHTML = '<div class="ajax-loading"><span class="spinner"></span>로딩 중...</div>';
+            let url = `${API_BASE}/threats?page=${page}&size=${size}`;
+            if (threatSeverity) url += `&severity=${threatSeverity}`;
+            fetch(url).then(r => r.json()).then(data => {
+                let h = '';
+                data.items.forEach(t => {
+                    const ts = (t.timestamp || '').substring(0, 19);
+                    h += `<div class="threat-card ${esc(t.severity)}" onclick="this.classList.toggle('expanded')">
+                        <div class="threat-header">
+                            <span class="severity-badge ${esc(t.severity)}">${esc(t.severity)}</span>
+                            <span class="threat-title">${esc(t.title)}</span>
+                        </div>
+                        <div class="threat-desc">${esc(t.description)}</div>
+                        <div class="threat-meta">
+                            <span>⏰ ${esc(ts)}</span>
+                            <span>🎯 ${esc(t.mitre)}</span>
+                        </div>
+                        <div class="threat-detail">${esc(t.detail)}</div>
+                    </div>`;
+                });
+                if (data.items.length === 0) h = '<div class="empty-state">데이터가 없습니다.</div>';
+                list.innerHTML = h;
+                renderPager(document.getElementById('threatPager'), data, loadThreats);
+            });
+        }
+        {% if analysis.threat_count > 0 %}loadThreats(1, 50);{% endif %}
+
+        function esc(s) {
+            if (!s) return '';
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        function basename(path) {
+            if (!path) return '';
+            return path.split('\\').pop().split('/').pop();
+        }
+
+        // ---- Pagination renderer ----
+        function renderPager(el, data, loadFn) {
+            const {total, page, pages, size} = data;
+            if (total === 0) { el.innerHTML = ''; return; }
+            const start = (page - 1) * size + 1;
+            const end = Math.min(page * size, total);
+            let h = `<span class="pager-info">${total}건 중 ${start}~${end}</span>`;
+            h += `<button class="pager-btn" onclick="void(0)" data-p="1" ${page===1?'disabled':''}>«</button>`;
+            h += `<button class="pager-btn" onclick="void(0)" data-p="${page-1}" ${page===1?'disabled':''}>‹</button>`;
+            let sp = Math.max(1, page - 2), ep = Math.min(pages, sp + 4);
+            if (ep - sp < 4) sp = Math.max(1, ep - 4);
+            for (let p = sp; p <= ep; p++) {
+                h += `<button class="pager-btn ${p===page?'active':''}" data-p="${p}">${p}</button>`;
+            }
+            h += `<button class="pager-btn" data-p="${page+1}" ${page===pages?'disabled':''}>›</button>`;
+            h += `<button class="pager-btn" data-p="${pages}" ${page===pages?'disabled':''}>»</button>`;
+            h += `<span class="pager-size">표시 <select data-role="size">`;
+            [50, 100, 200, 500].forEach(s => { h += `<option value="${s}" ${s===size?'selected':''}>${s}</option>`; });
+            h += `</select>건</span>`;
+            el.innerHTML = h;
+            el.querySelectorAll('.pager-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const p = +btn.dataset.p;
+                    if (p >= 1 && p <= pages) loadFn(p, size);
+                });
+            });
+            el.querySelector('[data-role="size"]').addEventListener('change', function() {
+                loadFn(1, +this.value);
             });
         }
 
+        // ---- Timeline ----
+        let tlEventId = '';
+        function tlFilter(eid, btn) {
+            btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            tlEventId = eid;
+            loadTimeline(1, currentTlSize);
+        }
+        let currentTlSize = 50;
+        function loadTimeline(page, size) {
+            currentTlSize = size;
+            const track = document.getElementById('timelineTrack');
+            const line = track.querySelector('.timeline-line');
+            track.innerHTML = '';
+            track.appendChild(line);
+            track.insertAdjacentHTML('beforeend', '<div class="ajax-loading"><span class="spinner"></span>로딩 중...</div>');
+            let url = `${API_BASE}/timeline?page=${page}&size=${size}`;
+            if (tlEventId) url += `&event_id=${tlEventId}`;
+            fetch(url).then(r => r.json()).then(data => {
+                track.innerHTML = '';
+                track.appendChild(line);
+                data.items.forEach(item => {
+                    const ts = (item.timestamp && item.timestamp.length > 19) ? item.timestamp.substring(11, 19) : (item.timestamp || '');
+                    track.insertAdjacentHTML('beforeend', `
+                        <div class="timeline-event">
+                            <div class="timeline-time">${esc(ts)}</div>
+                            <div class="timeline-dot eid-${item.event_id}"></div>
+                            <div class="timeline-content">
+                                <span class="eid-tag eid-${item.event_id}">${esc(item.event_name)}</span>
+                                ${esc(item.label)}
+                            </div>
+                        </div>`);
+                });
+                if (data.items.length === 0) {
+                    track.insertAdjacentHTML('beforeend', '<div class="empty-state">데이터가 없습니다.</div>');
+                }
+                renderPager(document.getElementById('tlPager'), data, loadTimeline);
+            });
+        }
+        loadTimeline(1, 50);
+
+        // ---- Process Events ----
+        function loadProcesses(page, size) {
+            const body = document.getElementById('procBody');
+            body.innerHTML = '<tr><td colspan="6" class="ajax-loading"><span class="spinner"></span>로딩 중...</td></tr>';
+            fetch(`${API_BASE}/processes?page=${page}&size=${size}`).then(r => r.json()).then(data => {
+                let h = '';
+                data.items.forEach(p => {
+                    const integ = (p.integrity === 'High' || p.integrity === 'System')
+                        ? `<span class="tag tag-high">${esc(p.integrity)}</span>`
+                        : esc(p.integrity);
+                    const cmd = p.cmd || '';
+                    const cmdShort = cmd.length > 80 ? esc(cmd.substring(0, 80)) + '...' : esc(cmd);
+                    h += `<tr>
+                        <td style="white-space:nowrap;font-family:Consolas,monospace;font-size:0.75rem;">${esc((p.timestamp||'').substring(0,19))}</td>
+                        <td title="${esc(p.image)}">${esc(basename(p.image))}</td>
+                        <td title="${esc(cmd)}">${cmdShort}</td>
+                        <td title="${esc(p.parent_image)}">${esc(basename(p.parent_image))}</td>
+                        <td>${esc(p.user)}</td>
+                        <td>${integ}</td>
+                    </tr>`;
+                });
+                if (data.items.length === 0) h = '<tr><td colspan="6" class="empty-state">데이터가 없습니다.</td></tr>';
+                body.innerHTML = h;
+                renderPager(document.getElementById('procPager'), data, loadProcesses);
+            });
+        }
+        loadProcesses(1, 50);
+
+        // ---- Network Events ----
+        function loadNetwork(page, size) {
+            const body = document.getElementById('netBody');
+            body.innerHTML = '<tr><td colspan="6" class="ajax-loading"><span class="spinner"></span>로딩 중...</td></tr>';
+            fetch(`${API_BASE}/network?page=${page}&size=${size}`).then(r => r.json()).then(data => {
+                let h = '';
+                data.items.forEach(n => {
+                    h += `<tr>
+                        <td style="white-space:nowrap;font-family:Consolas,monospace;font-size:0.75rem;">${esc((n.timestamp||'').substring(0,19))}</td>
+                        <td title="${esc(n.process)}">${esc(basename(n.process))}</td>
+                        <td>${esc(n.src_ip)}:${esc(n.src_port)}</td>
+                        <td>${esc(n.dst_ip)}:${esc(n.dst_port)}</td>
+                        <td>${esc(n.protocol)}</td>
+                        <td>${esc(n.initiated)}</td>
+                    </tr>`;
+                });
+                if (data.items.length === 0) h = '<tr><td colspan="6" class="empty-state">데이터가 없습니다.</td></tr>';
+                body.innerHTML = h;
+                renderPager(document.getElementById('netPager'), data, loadNetwork);
+            });
+        }
+        loadNetwork(1, 50);
     </script>
 </body>
 </html>
